@@ -1,0 +1,23 @@
+[project]
+name = "pod5-random-access"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.2.6",
+    "pyyaml>=6.0.2",
+]
+
+[build-system]
+requires = ["scikit-build-core", "pybind11"]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+cmake.minimum-version = "3.18"
+wheel.packages = ["pod5_test"]
+# cmake.args = ["--preset=default", "-G", "Ninja"]
+
+[[tool.scikit-build.overrides]]
+if.platform-system = "Windows"
+cmake.args = ["--preset=default", "-G", "Ninja"]

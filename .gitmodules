@@ -1,0 +1,7 @@
+[submodule "extern/pod5-file-format"]
+	path = extern/pod5-file-format
+	url = https://github.com/nanoporetech/pod5-file-format.git
+[submodule "extern/pybind11"]
+	path = extern/pybind11
+	url = https://github.com/pybind/pybind11.git
+	branch = stable
