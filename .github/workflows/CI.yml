@@ -208,15 +208,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Publish to PyPI
-        if: ${{ startsWith(github.ref, 'refs/tags/') && secrets.PYPI_API_TOKEN }}
+      - name: Check for PyPI token
+        id: check-token
+        run: |
+          if [ -n "${{ secrets.PYPI_API_TOKEN }}" ]; then
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_token=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Publish to PyPI with API Token
+        if: ${{ startsWith(github.ref, 'refs/tags/') && steps.check-token.outputs.has_token == 'true' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
       
       - name: Publish to PyPI with Trusted Publishing
-        if: ${{ startsWith(github.ref, 'refs/tags/') && !secrets.PYPI_API_TOKEN }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') && steps.check-token.outputs.has_token == 'false' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip-existing: true
