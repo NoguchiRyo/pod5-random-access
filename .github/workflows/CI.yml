@@ -97,6 +97,25 @@ jobs:
           #   echo "--- Investigation complete. Exiting intentionally. ---"
           #   # 調査が終わったら、意図的にエラーで終了させる
           #   exit 1
+          CIBW_REPAIR_WHEEL_COMMAND: |
+            set -ex
+            echo "--- Manually injecting .so file into the wheel ---"
+            
+            # 1. setuptoolsが生成した（壊れた）wheelを展開する
+            wheel unpack {wheel} --dest {dest_dir}
+            
+            # 2. 調査で判明した正しいパスから.soファイルをコピーする
+            #    コピー先は、展開されたwheelの中のパッケージディレクトリ
+            echo "Copying .so file from build/src/ to the unpacked wheel..."
+            cp build/src/pod5_random_access_pybind*.so {dest_dir}/pod5_random_access-*/pod5_random_access/
+            
+            # 3. .soファイルが注入されたディレクトリを、新しいwheelとして再パックする
+            #    出力先は{dest_dir}。ここに新しいwheelが作られる
+            wheel pack {dest_dir}/pod5_random_access-* --dest-dir {dest_dir}
+            
+            # 4. 新しく作った、.soファイルを含むwheelに対してauditwheel repairを実行する
+            #    入力は{dest_dir}に作られた新しいwheel。出力先はcibuildwheelが期待する{wheel_dir}
+            auditwheel repair {dest_dir}/pod5_random_access-*.whl -w {wheel_dir}
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
@@ -155,8 +174,9 @@ jobs:
           
           CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel"
           
-          # ★★★ 環境変数はVCPKG_ROOTだけで良い ★★★
-          CIBW_ENVIRONMENT_WINDOWS: 'VCPKG_ROOT=${{ github.workspace }}\vcpkg'
+          CIBW_ENVIRONMENT_WINDOWS: >
+            CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+            SETUPTOOLS_CMAKE_ARGS="-DPython_EXECUTABLE={python_executable};-DVCPKG_TARGET_TRIPLET=x64-windows"
           
           # Use standard pip build 
           CIBW_BUILD_FRONTEND: "pip"
