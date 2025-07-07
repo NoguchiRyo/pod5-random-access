@@ -38,6 +38,7 @@ jobs:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: x86_64
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_34
+          CIBW_ENVIRONMENT: CMAKE_PREFIX_PATH=/usr
           
           CIBW_BEFORE_BUILD_LINUX: |
             set -ex
@@ -65,10 +66,6 @@ jobs:
             # --- 調査3: システム全体でCMakeの設定ファイルを探す ---
             echo "--- Searching for *Config.cmake files under /usr:"
             find /usr -name "*Config.cmake" -o -name "*config.cmake"
-
-            echo "--- Investigation complete. Exiting intentionally. ---"
-            # 調査が終わったら、ビルドに進まずに意図的にエラーで終了させる
-            exit 1
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
