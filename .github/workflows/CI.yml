@@ -39,17 +39,11 @@ jobs:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: ${{ matrix.platform == 'manylinux_2_17_aarch64' && 'aarch64' || 'x86_64' }}
           
-          # Install system dependencies in the manylinux container
-          CIBW_BEFORE_BUILD_LINUX: |
-            yum update -y
-            yum install -y epel-release wget cmake3
-            ln -sf /usr/bin/cmake3 /usr/bin/cmake
-            wget https://apache.jfrog.io/artifactory/arrow/centos/apache-arrow-release-latest.rpm
-            yum install -y apache-arrow-release-latest.rpm
-            yum install -y arrow-devel zstd-devel flatbuffers-devel brotli-devel utf8proc-devel re2-devel bzip2-devel lz4-devel snappy-devel libcurl-devel openssl-devel
+          # Install basic build dependencies
+          CIBW_BEFORE_BUILD_LINUX: "yum install -y cmake3 gcc-c++ make && ln -sf /usr/bin/cmake3 /usr/bin/cmake"
           
-          # Build wheel using our custom build script
-          CIBW_BUILD_FRONTEND: "build[uv]"
+          # Use standard pip build
+          CIBW_BUILD_FRONTEND: "pip"
           
           # Test that the wheel imports correctly
           CIBW_TEST_COMMAND: "python -c 'import pod5_random_access; from pod5_random_access.pod5_random_access_pybind import Pod5Index; print(\"✅ Import successful!\")'"
@@ -95,10 +89,10 @@ jobs:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: ${{ matrix.architecture }}
           
-          # Set up vcpkg and dependencies
-          CIBW_BEFORE_BUILD_WINDOWS: |
-            pip install delvewheel
+          # Install delvewheel and set up build environment
+          CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel && cmake --preset=default"
           
+          # Set up vcpkg environment
           CIBW_ENVIRONMENT_WINDOWS: >
             VCPKG_ROOT="${{ github.workspace }}\\vcpkg"
             CMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
@@ -106,12 +100,8 @@ jobs:
             CMAKE_GENERATOR_PLATFORM="${{ matrix.architecture == 'x64' && 'x64' || 'Win32' }}"
             VCPKG_TARGET_TRIPLET="${{ matrix.architecture }}-windows"
           
-          # Install vcpkg dependencies before build
-          CIBW_BEFORE_BUILD: |
-            vcpkg install --triplet=${{ matrix.architecture }}-windows
-          
-          # Use our Windows build script
-          CIBW_BUILD_FRONTEND: "build[uv]"
+          # Use standard pip build 
+          CIBW_BUILD_FRONTEND: "pip"
           
           # Test the wheel
           CIBW_TEST_COMMAND: "python -c \"import pod5_random_access; from pod5_random_access.pod5_random_access_pybind import Pod5Index; print('✅ Windows wheel works!')\""
@@ -119,8 +109,8 @@ jobs:
           # Repair wheels with delvewheel (Windows equivalent of auditwheel)
           CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: "delvewheel repair -w {dest_dir} {wheel}"
           
-          # Skip 32-bit Python 3.10+ (optional, can remove if you want 32-bit support)
-          CIBW_SKIP: "cp310-win32 cp311-win32 cp312-win32"
+          # Skip pypy and musllinux only
+          CIBW_SKIP: "pp* *-musllinux*"
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4

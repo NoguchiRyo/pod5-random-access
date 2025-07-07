@@ -11,6 +11,7 @@ wheelhouse/
 *.pyd
 CMakeUserPresets.json
 .python-version
+error_temp.txt
 
 # Virtual environments
 .venv
