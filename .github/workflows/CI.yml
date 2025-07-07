@@ -49,7 +49,6 @@ jobs:
               libzstd-devel \
               flatbuffers-devel \
               arrow-devel-12.0.1 \
-              arrow-libs-12.0.1
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
