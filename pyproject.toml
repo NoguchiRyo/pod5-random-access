@@ -20,7 +20,5 @@ wheel.packages = ["pod5_random_access"]
 [[tool.scikit-build.overrides]]
 if.platform-system = "win32"
 cmake.args = [
-    "--preset=default", 
-    "-G", "Ninja",
-    "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded",
+    "--preset=default"
 ]
