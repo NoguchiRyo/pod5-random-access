@@ -120,7 +120,10 @@ jobs:
 
           CIBW_BEFORE_BUILD_WINDOWS: |
             python build_scripts/generate_cmake_presets.py
+            echo "About to run cmake configure..."
             cmake -B build --preset=default -DCMAKE_BUILD_TYPE=Release
+            echo "Cmake configure finished with exit code: %ERRORLEVEL%"
+            echo "About to run cmake build..."
             cmake --build build -j
             cmake --install build
 
