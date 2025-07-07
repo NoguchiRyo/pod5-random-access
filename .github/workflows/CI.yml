@@ -68,10 +68,11 @@ jobs:
             echo "--- Searching for *Config.cmake files under /usr:"
             find /usr -name "*Config.cmake" -o -name "*config.cmake"
 
-            # pod5-file-formatが探すディレクトリを作成
-            mkdir -p extern/pod5-file-format/cmake
-            # インストールされた設定ファイルを、探している名前でシンボリックリンクとして配置
-            ln -s /usr/lib64/cmake/flatbuffers/ extern/pod5-file-format/cmake/Flatbuffers
+            # # pod5-file-formatが探すディレクトリを作成
+            # mkdir -p extern/pod5-file-format/cmake
+            # # インストールされた設定ファイルを、探している名前でシンボリックリンクとして配置
+            # ln -s /usr/lib64/cmake/flatbuffers/ extern/pod5-file-format/cmake/Flatbuffers
+            ln -s /usr/lib64/cmake/flatbuffers/FlatBuffersConfig.cmake /usr/lib64/cmake/flatbuffers/FlatbuffersConfig.cmake
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
