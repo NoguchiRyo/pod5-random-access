@@ -18,59 +18,56 @@ permissions:
 
 jobs:
   linux:
-    runs-on: ${{ matrix.platform.runner }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
+        python-version: ['3.10', '3.11', '3.12']
         platform:
-          - runner: ubuntu-22.04
-            target: x86_64
-          - runner: ubuntu-22.04
-            target: x86
-          - runner: ubuntu-22.04
-            target: aarch64
-          - runner: ubuntu-22.04
-            target: armv7
-          - runner: ubuntu-22.04
-            target: s390x
-          - runner: ubuntu-22.04
-            target: ppc64le
+          - manylinux_2_17_x86_64
+          - manylinux_2_17_aarch64
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
       
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-      
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-      
-      - name: Install Apache Arrow dependencies
-        run: |
-          sudo apt install -y -V ca-certificates lsb-release wget
-          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-          sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-          sudo apt update
-          sudo apt install -y cmake libzstd-dev libflatbuffers-dev libarrow-dev=12.0.1-1
-      
-      - name: Build wheels
-        run: uv build --wheel
+      - name: Build manylinux wheels
+        uses: pypa/cibuildwheel@v2.21.4
+        env:
+          CIBW_BUILD: "cp${{ matrix.python-version | replace('.', '') }}-*"
+          CIBW_ARCHS: ${{ matrix.platform == 'manylinux_2_17_aarch64' && 'aarch64' || 'x86_64' }}
+          
+          # Install system dependencies in the manylinux container
+          CIBW_BEFORE_BUILD_LINUX: |
+            yum update -y
+            yum install -y epel-release wget cmake3
+            ln -sf /usr/bin/cmake3 /usr/bin/cmake
+            wget https://apache.jfrog.io/artifactory/arrow/centos/apache-arrow-release-latest.rpm
+            yum install -y apache-arrow-release-latest.rpm
+            yum install -y arrow-devel zstd-devel flatbuffers-devel brotli-devel utf8proc-devel re2-devel bzip2-devel lz4-devel snappy-devel libcurl-devel openssl-devel
+          
+          # Build wheel using our custom build script
+          CIBW_BUILD_FRONTEND: "build[uv]"
+          
+          # Test that the wheel imports correctly
+          CIBW_TEST_COMMAND: "python -c 'import pod5_random_access; from pod5_random_access.pod5_random_access_pybind import Pod5Index; print(\"✅ Import successful!\")'"
+          
+          # Skip musllinux and pypy for now
+          CIBW_SKIP: "*-musllinux* pp*"
+          
+          # auditwheel repair happens automatically with cibuildwheel
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-linux-${{ matrix.platform.target }}
-          path: dist
+          name: wheels-linux-${{ matrix.platform }}-py${{ matrix.python-version }}
+          path: wheelhouse
 
   windows:
-    runs-on: ${{ matrix.platform.runner }}
+    runs-on: windows-latest
     strategy:
       matrix:
-        platform:
-          - runner: windows-latest
-            target: x64
-            triplet: x64-windows
+        python-version: ['3.10', '3.11', '3.12']
+        architecture: ['x64', 'x86']
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
@@ -83,71 +80,47 @@ jobs:
         with:
           submodules: recursive
       
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-          architecture: ${{ matrix.platform.target }}
-      
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-      
-      # Visual Studio環境設定を先に行う
-      - name: Setup Visual Studio environment
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: ${{ matrix.platform.target }}
-      
-      # vcpkgのセットアップ（最新の安定版を使用）
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
       
-      # CMakeUserPresets.jsonを修正
-      - name: Create CMakeUserPresets.json
-        run: |
-          $presets = @{
-            version = 2
-            configurePresets = @(
-              @{
-                name = "default"
-                inherits = "vcpkg"
-                generator = "Visual Studio 17 2022"
-                architecture = "x64"
-                toolset = "host=x64"
-                environment = @{
-                  VCPKG_ROOT = "${{ github.workspace }}/vcpkg"
-                }
-                cacheVariables = @{
-                  CMAKE_BUILD_TYPE = "Release"
-                  VCPKG_TARGET_TRIPLET = "${{ matrix.platform.triplet }}"
-                }
-              }
-            )
-          } | ConvertTo-Json -Depth 10
-          $presets | Out-File -FilePath "CMakeUserPresets.json" -Encoding utf8
-        shell: pwsh
-      
-      # vcpkg manifestモードでの依存関係インストール
-      - name: Install vcpkg dependencies
-        run: |
-          $env:VCPKG_ROOT = "${{ github.workspace }}/vcpkg"
-          $env:CMAKE_TOOLCHAIN_FILE = "${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
-          vcpkg integrate install
-          vcpkg install --triplet=${{ matrix.platform.triplet }}
-        shell: pwsh
-      
-      - name: Build wheels
-        run: uv build --wheel
+      - name: Build Windows wheels
+        uses: pypa/cibuildwheel@v2.21.4
         env:
-          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-          CMAKE_TOOLCHAIN_FILE: ${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
-          CMAKE_GENERATOR: "Visual Studio 17 2022"
-          CMAKE_GENERATOR_PLATFORM: "x64"
+          CIBW_BUILD: "cp${{ matrix.python-version | replace('.', '') }}-*"
+          CIBW_ARCHS: ${{ matrix.architecture }}
+          
+          # Set up vcpkg and dependencies
+          CIBW_BEFORE_BUILD_WINDOWS: |
+            pip install delvewheel
+          
+          CIBW_ENVIRONMENT_WINDOWS: >
+            VCPKG_ROOT="${{ github.workspace }}\\vcpkg"
+            CMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
+            CMAKE_GENERATOR="Visual Studio 17 2022"
+            CMAKE_GENERATOR_PLATFORM="${{ matrix.architecture == 'x64' && 'x64' || 'Win32' }}"
+            VCPKG_TARGET_TRIPLET="${{ matrix.architecture }}-windows"
+          
+          # Install vcpkg dependencies before build
+          CIBW_BEFORE_BUILD: |
+            vcpkg install --triplet=${{ matrix.architecture }}-windows
+          
+          # Use our Windows build script
+          CIBW_BUILD_FRONTEND: "build[uv]"
+          
+          # Test the wheel
+          CIBW_TEST_COMMAND: "python -c \"import pod5_random_access; from pod5_random_access.pod5_random_access_pybind import Pod5Index; print('✅ Windows wheel works!')\""
+          
+          # Repair wheels with delvewheel (Windows equivalent of auditwheel)
+          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: "delvewheel repair -w {dest_dir} {wheel}"
+          
+          # Skip 32-bit Python 3.10+ (optional, can remove if you want 32-bit support)
+          CIBW_SKIP: "cp310-win32 cp311-win32 cp312-win32"
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-windows-${{ matrix.platform.target }}
-          path: dist
+          name: wheels-windows-${{ matrix.architecture }}-py${{ matrix.python-version }}
+          path: wheelhouse
 
   release:
     name: Release

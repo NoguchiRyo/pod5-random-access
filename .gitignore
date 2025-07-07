@@ -4,6 +4,7 @@ __pycache__/
 build/
 dist/
 wheels/
+wheelhouse/
 *.egg-info
 *.so
 *.dll
@@ -13,4 +14,9 @@ CMakeUserPresets.json
 
 # Virtual environments
 .venv
+test_*env/
+
+# Wheel building temporary directories
+wheel_install/
+wheel_build/
 

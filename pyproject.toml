@@ -10,15 +10,5 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["scikit-build-core", "pybind11"]
-build-backend = "scikit_build_core.build"
-
-[tool.scikit-build]
-cmake.minimum-version = "3.18"
-wheel.packages = ["pod5_random_access"]
-
-[[tool.scikit-build.overrides]]
-if.platform-system = "win32"
-cmake.args = [
-    "--preset=default"
-]
+requires = ["setuptools>=45", "wheel", "pybind11[global]>=2.10.0"]
+build-backend = "setuptools.build_meta"
