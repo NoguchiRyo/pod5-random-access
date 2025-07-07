@@ -39,14 +39,21 @@ jobs:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: ${{ matrix.platform == 'manylinux_2_17_aarch64' && 'aarch64' || 'x86_64' }}
           
-          # Install Apache Arrow and build dependencies
+          # Install basic build dependencies and Arrow
           CIBW_BEFORE_BUILD_LINUX: |
             yum update -y
-            yum install -y epel-release wget cmake3 gcc-c++ make
-            ln -sf /usr/bin/cmake3 /usr/bin/cmake
-            wget https://apache.jfrog.io/artifactory/arrow/centos/apache-arrow-release-latest.rpm
-            yum install -y apache-arrow-release-latest.rpm
-            yum install -y arrow-devel zstd-devel flatbuffers-devel brotli-devel utf8proc-devel re2-devel bzip2-devel lz4-devel snappy-devel libcurl-devel openssl-devel
+            yum install -y epel-release wget cmake3 gcc-c++ make openssl-devel libcurl-devel
+            ln -sf /usr/bin/cmake3 /usr/bin/cmake || true
+            # Install Arrow from source since CentOS packages don't work reliably
+            cd /tmp
+            wget https://github.com/apache/arrow/archive/apache-arrow-12.0.1.tar.gz
+            tar -xzf apache-arrow-12.0.1.tar.gz
+            cd arrow-apache-arrow-12.0.1/cpp
+            mkdir build && cd build
+            cmake .. -DCMAKE_BUILD_TYPE=Release -DARROW_BUILD_SHARED=ON -DARROW_BUILD_STATIC=OFF -DARROW_COMPUTE=OFF -DARROW_CSV=OFF -DARROW_DATASET=OFF -DARROW_JSON=OFF -DARROW_PARQUET=OFF -DARROW_WITH_ZSTD=ON
+            make -j$(nproc)
+            make install
+            ldconfig
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
