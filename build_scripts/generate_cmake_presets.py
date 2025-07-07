@@ -4,6 +4,10 @@ from pathlib import Path
 
 
 def generate_cmake_presets():
+    print("All environment variables with GITHUB:")
+    for key, value in os.environ.items():
+        if "GITHUB" in key:
+            print(f"{key}: {value}")
     github_workspace = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve()
     print(f"GITHUB_WORKSPACE: {github_workspace}")
     vcpkg_root = github_workspace / "vcpkg"
