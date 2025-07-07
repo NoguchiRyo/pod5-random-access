@@ -38,7 +38,7 @@ jobs:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: x86_64
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_34
-          # CIBW_ENVIRONMENT: 'CMAKE_ARGS=-DCMAKE_PREFIX_PATH=/usr'
+          CIBW_ENVIRONMENT: 'CMAKE_ARGS=-DCMAKE_PREFIX_PATH=/usr'
           # CIBW_ENVIRONMENT: 'Flatbuffers_DIR=/usr/lib64/cmake/flatbuffers'
           
           CIBW_BEFORE_BUILD_LINUX: |
@@ -74,6 +74,8 @@ jobs:
             cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -DFLATBUFFERS_BUILD_TESTS=OFF
             cmake --build build --target install
             cd ..
+
+            ln -s /usr/local/lib64/cmake/flatbuffers/FlatBuffersConfig.cmake /usr/local/lib64/cmake/flatbuffers/FlatbuffersConfig.cmake
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
