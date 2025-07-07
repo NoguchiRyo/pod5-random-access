@@ -1,0 +1,222 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - '*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-22.04
+            target: x86_64
+          - runner: ubuntu-22.04
+            target: x86
+          - runner: ubuntu-22.04
+            target: aarch64
+          - runner: ubuntu-22.04
+            target: armv7
+          - runner: ubuntu-22.04
+            target: s390x
+          - runner: ubuntu-22.04
+            target: ppc64le
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      
+      - name: Install Apache Arrow dependencies
+        run: |
+          sudo apt install -y -V ca-certificates lsb-release wget
+          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt update
+          sudo apt install -y cmake libzstd-dev libflatbuffers-dev libarrow-dev=12.0.1-1
+      
+      - name: Build wheels
+        run: uv build --wheel
+      
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-${{ matrix.platform.target }}
+          path: dist
+
+  musllinux:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-22.04
+            target: x86_64
+          - runner: ubuntu-22.04
+            target: x86
+          - runner: ubuntu-22.04
+            target: aarch64
+          - runner: ubuntu-22.04
+            target: armv7
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      
+      # MuslLinuxでは静的リンクやAlpineベースのDockerコンテナを使用することが多い
+      - name: Install Alpine dependencies (for musl)
+        run: |
+          # Alpine Linuxでの依存関係インストール
+          sudo apk add --no-cache \
+            build-base \
+            cmake \
+            arrow-dev \
+            flatbuffers-dev \
+            zstd-dev \
+            || echo "Fallback to manual build"
+      
+      - name: Build wheels
+        run: uv build --wheel
+      
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-musllinux-${{ matrix.platform.target }}
+          path: dist
+
+  windows:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: windows-latest
+            target: x64
+            triplet: x64-windows
+          - runner: windows-latest
+            target: x86
+            triplet: x86-windows
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+          architecture: ${{ matrix.platform.target }}
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      
+      # vcpkgのセットアップ（ベストプラクティス）
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 'f7423ee180c4b7f40d43402c2feb3859161ef625'  # 固定バージョンを使用
+          vcpkgJsonGlob: 'vcpkg.json'
+      
+      - name: Install Arrow via vcpkg
+        run: |
+          $env:VCPKG_ROOT = "${{ github.workspace }}/vcpkg"
+          vcpkg install arrow:${{ matrix.platform.triplet }}
+        shell: pwsh
+      
+      - name: Create CMakeUserPresets.json
+        run: |
+          $presets = @{
+            version = 2
+            configurePresets = @(
+              @{
+                name = "default"
+                inherits = "vcpkg"
+                environment = @{
+                  VCPKG_ROOT = "${{ github.workspace }}/vcpkg"
+                }
+              }
+            )
+          } | ConvertTo-Json -Depth 10
+          $presets | Out-File -FilePath "CMakeUserPresets.json" -Encoding utf8
+        shell: pwsh
+      
+      - name: Build wheels
+        run: uv build --wheel
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+          CMAKE_TOOLCHAIN_FILE: ${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+      
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows-${{ matrix.platform.target }}
+          path: dist
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
+    needs: [linux, musllinux, windows]
+    permissions:
+      # Use to sign the release artifacts
+      id-token: write
+      # Used to upload release artifacts
+      contents: write
+      # Used to generate artifact attestation
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Flatten artifacts directory
+        run: |
+          mkdir -p dist
+          find artifacts -name "*.whl" -exec cp {} dist/ \;
+          ls -la dist/
+      
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'dist/*'
+      
+      - name: Create GitHub Release
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Publish to PyPI
+        if: ${{ startsWith(github.ref, 'refs/tags/') && secrets.PYPI_API_TOKEN }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          skip-existing: true
+      
+      - name: Publish to PyPI with Trusted Publishing
+        if: ${{ startsWith(github.ref, 'refs/tags/') && !secrets.PYPI_API_TOKEN }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
