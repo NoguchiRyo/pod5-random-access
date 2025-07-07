@@ -49,6 +49,26 @@ jobs:
               libzstd-devel \
               flatbuffers-devel \
               arrow-devel-12.0.1 \
+            
+            echo "================================================================"
+            echo "             INVESTIGATING PACKAGE FILE LOCATIONS"
+            echo "================================================================"
+
+            # --- 調査1: flatbuffers-develがインストールした全ファイルを表示 ---
+            echo "--- Files installed by flatbuffers-devel:"
+            rpm -ql flatbuffers-devel
+            
+            # --- 調査2: arrow-develがインストールした全ファイルを表示（比較用） ---
+            echo "--- Files installed by arrow-devel:"
+            rpm -ql arrow-devel
+
+            # --- 調査3: システム全体でCMakeの設定ファイルを探す ---
+            echo "--- Searching for *Config.cmake files under /usr:"
+            find /usr -name "*Config.cmake" -o -name "*config.cmake"
+
+            echo "--- Investigation complete. Exiting intentionally. ---"
+            # 調査が終わったら、ビルドに進まずに意図的にエラーで終了させる
+            exit 1
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
