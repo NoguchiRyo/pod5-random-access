@@ -25,31 +25,18 @@ class CMakeBuildExt(build_ext):
         # Create build directory
         build_dir.mkdir(exist_ok=True)
 
-        # Use CMake preset for configuration
-        if sys.platform.startswith("win"):
-            # Windows: Use default preset
-            configure_cmd = ["cmake", "-B", "build", "--preset=default"]
-            cmake_args = os.environ.get("CMAKE_ARGS", "").split()
-            if cmake_args:
-                configure_cmd.extend(cmake_args)
-            print(f"Configuring with preset: {' '.join(configure_cmd)}")
-            subprocess.run(configure_cmd, cwd=project_dir, check=True)
-        else:
-            # Linux: Simple configuration
-            configure_cmd = [
-                "cmake",
-                "-B",
-                "build",
-                "-DCMAKE_BUILD_TYPE=Release",
-                # "--debug-find",
-            ]
+        # -------------------- 修正箇所 --------------------
+        # プラットフォームに関係なく、CMakeの基本コマンドを定義
+        configure_cmd = ["cmake", "-B", "build"]
 
-            # CMAKE_ARGS環境変数から追加の引数を取得して追加
-            cmake_args = os.environ.get("CMAKE_ARGS", "").split()
-            if cmake_args:
-                configure_cmd.extend(cmake_args)
-            print(f"Configuring: {' '.join(configure_cmd)}")
-            subprocess.run(configure_cmd, cwd=project_dir, check=True)
+        # CMAKE_ARGS環境変数から全ての引数を取得して追加
+        cmake_args = os.environ.get("CMAKE_ARGS", "").split()
+        if cmake_args:
+            configure_cmd.extend(cmake_args)
+
+        print(f"Configuring with: {' '.join(configure_cmd)}")
+        subprocess.run(configure_cmd, cwd=project_dir, check=True)
+        # ----------------------------------------------------
 
         # Build
         build_cmd = ["cmake", "--build", "build", "-j"]
