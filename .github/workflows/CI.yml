@@ -53,6 +53,8 @@ jobs:
               libzstd-devel \
               arrow-devel-12.0.1 \
 
+            $CPYTHON_EXECUTABLE -m pip install wheel auditwheel
+
             # flatbuffers-devel \
             
             # echo "================================================================"

@@ -35,13 +35,25 @@ class CMakeBuildExt(build_ext):
             configure_cmd.extend(cmake_args)
 
         if sys.platform == "win32":
-            # Windowsの場合、vcpkgのツールチェインファイルは必須
-            toolchain_file = os.environ.get("CMAKE_TOOLCHAIN_FILE")
-            if not toolchain_file:
+            cmake_args_str = os.environ.get("SETUPTOOLS_CMAKE_ARGS", "")
+            if cmake_args_str:
+                configure_cmd.extend(cmake_args_str.split(";"))
+
+            # GITHUB_WORKSPACE環境変数から安全にパスを取得
+            workspace = os.environ.get("GITHUB_WORKSPACE")
+            if not workspace:
                 raise RuntimeError(
-                    "CMAKE_TOOLCHAIN_FILE environment variable is not set on Windows."
+                    "GITHUB_WORKSPACE environment variable is not set on Windows."
                 )
-            configure_cmd.append(f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}")
+
+            # Pythonで安全にパスを組み立てる
+            toolchain_file = (
+                Path(workspace) / "vcpkg" / "scripts" / "buildsystems" / "vcpkg.cmake"
+            )
+
+            # CMakeにはフォワードスラッシュで渡すのが最も安全
+            configure_cmd.append(f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file.as_posix()}")
+
             configure_cmd.append("-DCMAKE_GENERATOR_PLATFORM=x64")
             configure_cmd.append("-DCMAKE_GENERATOR=Visual Studio 17 2022")
 
