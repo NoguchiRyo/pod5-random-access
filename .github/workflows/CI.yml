@@ -49,30 +49,30 @@ jobs:
             
             dnf install -y \
               libzstd-devel \
-              flatbuffers-devel \
+              # flatbuffers-devel \
               arrow-devel-12.0.1 \
             
-            echo "================================================================"
-            echo "             INVESTIGATING PACKAGE FILE LOCATIONS"
-            echo "================================================================"
+            # echo "================================================================"
+            # echo "             INVESTIGATING PACKAGE FILE LOCATIONS"
+            # echo "================================================================"
+            #
+            # # --- 調査1: flatbuffers-develがインストールした全ファイルを表示 ---
+            # echo "--- Files installed by flatbuffers-devel:"
+            # rpm -ql flatbuffers-devel
+            #
+            # # --- 調査2: arrow-develがインストールした全ファイルを表示（比較用） ---
+            # echo "--- Files installed by arrow-devel:"
+            # rpm -ql arrow-devel
+            #
+            # # --- 調査3: システム全体でCMakeの設定ファイルを探す ---
+            # echo "--- Searching for *Config.cmake files under /usr:"
+            # find /usr -name "*Config.cmake" -o -name "*config.cmake"
 
-            # --- 調査1: flatbuffers-develがインストールした全ファイルを表示 ---
-            echo "--- Files installed by flatbuffers-devel:"
-            rpm -ql flatbuffers-devel
-            
-            # --- 調査2: arrow-develがインストールした全ファイルを表示（比較用） ---
-            echo "--- Files installed by arrow-devel:"
-            rpm -ql arrow-devel
-
-            # --- 調査3: システム全体でCMakeの設定ファイルを探す ---
-            echo "--- Searching for *Config.cmake files under /usr:"
-            find /usr -name "*Config.cmake" -o -name "*config.cmake"
-
-            # # pod5-file-formatが探すディレクトリを作成
-            # mkdir -p extern/pod5-file-format/cmake
-            # # インストールされた設定ファイルを、探している名前でシンボリックリンクとして配置
-            # ln -s /usr/lib64/cmake/flatbuffers/ extern/pod5-file-format/cmake/Flatbuffers
-            ln -s /usr/lib64/cmake/flatbuffers/FlatBuffersConfig.cmake /usr/lib64/cmake/flatbuffers/FlatbuffersConfig.cmake
+            git clone --depth 1 --branch v2.0.8 https://github.com/google/flatbuffers.git
+            cd flatbuffers
+            cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -DFLATBUFFERS_BUILD_TESTS=OFF
+            cmake --build build --target install
+            cd ..
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
