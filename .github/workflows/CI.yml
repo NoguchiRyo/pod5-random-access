@@ -73,6 +73,10 @@ jobs:
             target: x86
             triplet: x86-windows
     steps:
+      - name: Setup Visual Studio environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.platform.target }}
       - uses: actions/checkout@v4
         with:
           submodules: recursive
