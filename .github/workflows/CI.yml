@@ -37,6 +37,7 @@ jobs:
         env:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: x86_64
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_34
           
           # Install Arrow and dependencies using a more robust method
           CIBW_BEFORE_BUILD_LINUX: |
@@ -44,7 +45,8 @@ jobs:
             yum install -y epel-release
             RELEASE_VERSION=$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)
             yum install -y "https://apache.jfrog.io/artifactory/arrow/centos/${RELEASE_VERSION}/apache-arrow-release-latest.rpm"
-            yum install -y zstd-devel flatbuffers-devel
+            yum install -y flatbuffers-devel
+            dnf install -y libzstd-devel
             yum install -y --enablerepo=epel,apache-arrow arrow-devel-12.0.1 arrow-libs-12.0.1
           
           # Use standard pip build
