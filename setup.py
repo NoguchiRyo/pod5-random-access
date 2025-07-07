@@ -17,34 +17,42 @@ project_dir = Path(__file__).parent.absolute()
 build_dir = project_dir / "build"
 install_dir = project_dir / "pod5_random_access"
 
+
 class CMakeBuildExt(build_ext):
     """Custom build extension that uses CMake instead of setuptools default compiler."""
-    
+
     def build_extensions(self):
         # Create build directory
         build_dir.mkdir(exist_ok=True)
-        
+
         # Use CMake preset for configuration
-        if sys.platform.startswith('win'):
+        if sys.platform.startswith("win"):
             # Windows: Use default preset
             configure_cmd = ["cmake", "-B", "build", "--preset=default"]
+            cmake_args = os.environ.get("CMAKE_ARGS", "").split()
+            if cmake_args:
+                configure_cmd.extend(cmake_args)
             print(f"Configuring with preset: {' '.join(configure_cmd)}")
             subprocess.run(configure_cmd, cwd=project_dir, check=True)
         else:
             # Linux: Simple configuration
             configure_cmd = ["cmake", "-B", "build", "-DCMAKE_BUILD_TYPE=Release"]
+            cmake_args = os.environ.get("CMAKE_ARGS", "").split()
+            if cmake_args:
+                configure_cmd.extend(cmake_args)
             print(f"Configuring: {' '.join(configure_cmd)}")
             subprocess.run(configure_cmd, cwd=project_dir, check=True)
-        
+
         # Build
         build_cmd = ["cmake", "--build", "build", "-j"]
         print(f"Building: {' '.join(build_cmd)}")
         subprocess.run(build_cmd, cwd=project_dir, check=True)
-        
+
         # Install
         install_cmd = ["cmake", "--install", "build"]
         print(f"Installing: {' '.join(install_cmd)}")
         subprocess.run(install_cmd, cwd=project_dir, check=True)
+
 
 # We need to define a dummy extension to trigger the build process
 extensions = [
@@ -70,3 +78,4 @@ if __name__ == "__main__":
             "pyyaml>=6.0.2",
         ],
     )
+
