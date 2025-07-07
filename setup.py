@@ -34,6 +34,17 @@ class CMakeBuildExt(build_ext):
         if cmake_args:
             configure_cmd.extend(cmake_args)
 
+        if sys.platform == "win32":
+            # Windowsの場合、vcpkgのツールチェインファイルは必須
+            toolchain_file = os.environ.get("CMAKE_TOOLCHAIN_FILE")
+            if not toolchain_file:
+                raise RuntimeError(
+                    "CMAKE_TOOLCHAIN_FILE environment variable is not set on Windows."
+                )
+            configure_cmd.append(f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}")
+            configure_cmd.append("-DCMAKE_GENERATOR_PLATFORM=x64")
+            configure_cmd.append("-DCMAKE_GENERATOR=Visual Studio 17 2022")
+
         print(f"Configuring with: {' '.join(configure_cmd)}")
         subprocess.run(configure_cmd, cwd=project_dir, check=True)
         # ----------------------------------------------------
