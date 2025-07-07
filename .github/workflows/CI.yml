@@ -119,7 +119,7 @@ jobs:
             GITHUB_WORKSPACE=${{ github.workspace }}
 
           CIBW_BEFORE_BUILD_WINDOWS: |
-            pyrhon build_scripts/generate_cmake_presets.py
+            python build_scripts/generate_cmake_presets.py
             cmake -B build --preset=default -DCMAKE_BUILD_TYPE=Release
             cmake --build build -j
             cmake --install build
