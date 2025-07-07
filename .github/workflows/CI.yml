@@ -69,10 +69,8 @@ jobs:
           - runner: windows-latest
             target: x64
             triplet: x64-windows
-          - runner: windows-latest
-            target: x86
-            triplet: x86-windows
     steps:
+      - uses: lukka/get-cmake@latest
       - name: Setup Visual Studio environment
         uses: ilammy/msvc-dev-cmd@v1
         with:
