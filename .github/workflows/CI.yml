@@ -33,6 +33,8 @@ jobs:
             target: ppc64le
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - uses: actions/setup-python@v5
         with:
@@ -73,6 +75,8 @@ jobs:
             target: armv7
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - uses: actions/setup-python@v5
         with:
@@ -115,6 +119,8 @@ jobs:
             triplet: x86-windows
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - uses: actions/setup-python@v5
         with:
@@ -131,11 +137,11 @@ jobs:
           vcpkgGitCommitId: 'f7423ee180c4b7f40d43402c2feb3859161ef625'  # 固定バージョンを使用
           vcpkgJsonGlob: 'vcpkg.json'
       
-      - name: Install Arrow via vcpkg
-        run: |
-          $env:VCPKG_ROOT = "${{ github.workspace }}/vcpkg"
-          vcpkg install arrow:${{ matrix.platform.triplet }}
-        shell: pwsh
+      # - name: Install Arrow via vcpkg
+      #   run: |
+      #     $env:VCPKG_ROOT = "${{ github.workspace }}/vcpkg"
+      #     vcpkg install arrow:${{ matrix.platform.triplet }}
+      #   shell: pwsh
       
       - name: Create CMakeUserPresets.json
         run: |
@@ -180,6 +186,8 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - name: Download all artifacts
         uses: actions/download-artifact@v4
