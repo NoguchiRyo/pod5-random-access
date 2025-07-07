@@ -116,7 +116,7 @@ jobs:
           CIBW_ARCHS: AMD64
           
           CIBW_ENVIRONMENT_WINDOWS: >
-            GITHUB_WORKSPACE=${{ github.workspace }}
+            GITHUB_WORKSPACE="${{ github.workspace }}"
 
           CIBW_BEFORE_BUILD_WINDOWS: |
             python build_scripts/generate_cmake_presets.py

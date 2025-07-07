@@ -1,11 +1,13 @@
 import json
 import os
+from pathlib import Path
 
 
 def generate_cmake_presets():
-    github_workspace = os.environ.get("GITHUB_WORKSPACE", "")
-    if github_workspace == "":
-        raise ValueError("GITHUB_WORKSPACE environment variable is not set.")
+    github_workspace = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve()
+    print(f"GITHUB_WORKSPACE: {github_workspace}")
+    vcpkg_root = github_workspace / "vcpkg"
+    print(f"VCPKG_ROOT: {str(vcpkg_root)}")
 
     preset = {
         "version": 2,
@@ -13,7 +15,7 @@ def generate_cmake_presets():
             {
                 "name": "default",
                 "inherits": "vcpkg",
-                "environment": {"VCPKG_ROOT": f"{github_workspace}/vcpkg"},
+                "environment": {"VCPKG_ROOT": str(vcpkg_root)},
             }
         ],
     }
@@ -21,7 +23,6 @@ def generate_cmake_presets():
     with open("CMakeUserPresets.json", "w") as f:
         json.dump(preset, f, indent=2)
 
-    print(f"GITHUB_WORKSPACE: {github_workspace}")
     print(f"Generated CMakeUserPresets.json: {preset}")
 
 
