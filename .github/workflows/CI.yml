@@ -102,7 +102,7 @@ jobs:
             echo "--- Manually injecting .so file into the wheel ---"
             
             # 1. setuptoolsが生成した（壊れた）wheelを展開する
-            wheel unpack {wheel} --dest {dest_dir}
+            python -m wheel unpack {wheel} --dest {dest_dir}
             
             # 2. 調査で判明した正しいパスから.soファイルをコピーする
             #    コピー先は、展開されたwheelの中のパッケージディレクトリ
@@ -111,7 +111,7 @@ jobs:
             
             # 3. .soファイルが注入されたディレクトリを、新しいwheelとして再パックする
             #    出力先は{dest_dir}。ここに新しいwheelが作られる
-            wheel pack {dest_dir}/pod5_random_access-* --dest-dir {dest_dir}
+            python -m wheel pack {dest_dir}/pod5_random_access-* --dest-dir {dest_dir}
             
             # 4. 新しく作った、.soファイルを含むwheelに対してauditwheel repairを実行する
             #    入力は{dest_dir}に作られた新しいwheel。出力先はcibuildwheelが期待する{wheel_dir}
@@ -163,6 +163,9 @@ jobs:
           CIBW_ARCHS: AMD64
           
           # Install delvewheel for DLL bundling
+          CIBW_ENVIRONMENT_WINDOWS: >
+            GITHUB_WORKSPACE=${{ github.workspace }}
+            SETUPTOOLS_CMAKE_ARGS="-DPython_EXECUTABLE={python_executable};-DVCPKG_TARGET_TRIPLET=x64-windows"
 
           CIBW_CMAKE_ARGS: >-
             -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
@@ -173,10 +176,6 @@ jobs:
             -DCMAKE_GENERATOR_PLATFORM=${{ matrix.architecture == 'x64' && 'x64' || 'Win32' }}
           
           CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel"
-          
-          CIBW_ENVIRONMENT_WINDOWS: >
-            CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
-            SETUPTOOLS_CMAKE_ARGS="-DPython_EXECUTABLE={python_executable};-DVCPKG_TARGET_TRIPLET=x64-windows"
           
           # Use standard pip build 
           CIBW_BUILD_FRONTEND: "pip"
