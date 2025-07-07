@@ -38,90 +38,41 @@ jobs:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: x86_64
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_34
-          # CIBW_ENVIRONMENT: 'CMAKE_ARGS=-DCMAKE_PREFIX_PATH=/usr'
-          # CIBW_ENVIRONMENT: 'Flatbuffers_DIR=/usr/lib64/cmake/flatbuffers'
           
           CIBW_BEFORE_BUILD_LINUX: |
             set -ex
             dnf install -y 'https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm'
-            
             dnf install -y https://apache.jfrog.io/artifactory/arrow/almalinux/9/apache-arrow-release-latest.rpm
-
             dnf install -y python${PY_VER}-devel
-            
             dnf install -y \
               libzstd-devel \
               arrow-devel-12.0.1 \
 
-            $CPYTHON_EXECUTABLE -m pip install wheel auditwheel
-
-            # flatbuffers-devel \
-            
-            # echo "================================================================"
-            # echo "             INVESTIGATING PACKAGE FILE LOCATIONS"
-            # echo "================================================================"
-            #
-            # # --- 調査1: flatbuffers-develがインストールした全ファイルを表示 ---
-            # echo "--- Files installed by flatbuffers-devel:"
-            # rpm -ql flatbuffers-devel
-            #
-            # # --- 調査2: arrow-develがインストールした全ファイルを表示（比較用） ---
-            # echo "--- Files installed by arrow-devel:"
-            # rpm -ql arrow-devel
-            #
-            # # --- 調査3: システム全体でCMakeの設定ファイルを探す ---
-            # echo "--- Searching for *Config.cmake files under /usr:"
-            # find /usr -name "*Config.cmake" -o -name "*config.cmake"
-
+            echo "Building flatbuffers"
             git clone --depth 1 --branch v2.0.8 https://github.com/google/flatbuffers.git
             cd flatbuffers
             cmake -B build -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -DFLATBUFFERS_BUILD_TESTS=OFF
             cmake --build build --target install
             cd ..
 
+            echo "Adding symbolic links"
             ln -s /usr/local/lib64/cmake/flatbuffers/FlatBuffersConfig.cmake /usr/local/lib64/cmake/flatbuffers/FlatbuffersConfig.cmake
 
-          CIBW_ENVIRONMENT: >
-            CMAKE_ARGS="-DPython_EXECUTABLE=$CPYTHON_EXECUTABLE
-            -DPython_INCLUDE_DIR=$CPYTHON_INCLUDE_DIR
-            -DPython_LIBRARY=$CPYTHON_LIBRARY"
+            echo "Building pod5_random_access_pybind"
+            cmake -B build -DCMAKE_BUILD_TYPE=Release 
+            cmake --build build -j
+            cmake --install build
 
-          # CIBW_REPAIR_WHEEL_COMMAND: |
-          #   wheel unpack {wheel} --dest {dest_dir}
-          #   cp build/lib/pod5_random_access_pybind*.so {dest_dir}/pod5_random_access-*/pod5_random_access/
-          #   wheel pack {dest_dir}/pod5_random_access-* --dest-dir {dest_dir}
-          #   auditwheel repair {dest_dir}/pod5_random_access-*.whl -w {dest_dir}
-          # CIBW_REPAIR_WHEEL_COMMAND: |
-          #   set -ex
-          #   echo "--- Listing all files in the project directory ---"
-          #   # プロジェクトルートから全てのファイルとディレクトリをリストアップ
-          #   find . -ls
-          #   echo "--- Investigation complete. Exiting intentionally. ---"
-          #   # 調査が終わったら、意図的にエラーで終了させる
-          #   exit 1
-          CIBW_REPAIR_WHEEL_COMMAND: |
-            set -ex
-            echo "--- Manually injecting .so file into the wheel ---"
+            echo "=== Build directory structure ==="
+            find build -type f | sort
             
-            # 1. setuptoolsが生成した（壊れた）wheelを展開する
-            python -m wheel unpack {wheel} --dest {dest_dir}
+            echo -e "\n=== Shared libraries ==="
+            find build -type f \( -name "*.so" -o -name "*.dylib" \) -exec ls -lh {} \;
             
-            # 2. 調査で判明した正しいパスから.soファイルをコピーする
-            #    コピー先は、展開されたwheelの中のパッケージディレクトリ
-            echo "Copying .so file from build/src/ to the unpacked wheel..."
-            cp build/src/pod5_random_access_pybind*.so {dest_dir}/pod5_random_access-*/pod5_random_access/
+            echo -e "\n=== pod5_random_access contents ==="
+            ls -la pod5_random_access/
             
-            # 3. .soファイルが注入されたディレクトリを、新しいwheelとして再パックする
-            #    出力先は{dest_dir}。ここに新しいwheelが作られる
-            python -m wheel pack {dest_dir}/pod5_random_access-* --dest-dir {dest_dir}
-            
-            # 4. 新しく作った、.soファイルを含むwheelに対してauditwheel repairを実行する
-            #    入力は{dest_dir}に作られた新しいwheel。出力先はcibuildwheelが期待する{wheel_dir}
-            auditwheel repair {dest_dir}/pod5_random_access-*.whl -w {wheel_dir}
-          
-          # Use standard pip build
-          CIBW_BUILD_FRONTEND: "pip"
-          
+
           # Test that the wheel imports correctly
           CIBW_TEST_COMMAND: "python -c 'import pod5_random_access; from pod5_random_access.pod5_random_access_pybind import Pod5Index; print(\"✅ Import successful!\")'"
           
@@ -164,31 +115,32 @@ jobs:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: AMD64
           
-          # Install delvewheel for DLL bundling
           CIBW_ENVIRONMENT_WINDOWS: >
             GITHUB_WORKSPACE=${{ github.workspace }}
-            SETUPTOOLS_CMAKE_ARGS="-DPython_EXECUTABLE={python_executable};-DVCPKG_TARGET_TRIPLET=x64-windows"
 
-          CIBW_CMAKE_ARGS: >-
-            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
-            -DVCPKG_TARGET_TRIPLET=${{ matrix.architecture }}-windows
-            -DPython_EXECUTABLE={python_executable}
-            -DCMAKE_BUILD_TYPE=Release
-            -DCMAKE_GENERATOR="Visual Studio 17 2022"
-            -DCMAKE_GENERATOR_PLATFORM=${{ matrix.architecture == 'x64' && 'x64' || 'Win32' }}
+          CIBW_BEFORE_BUILD_WINDOWS: |
+            pyrhon build_scripts/generate_cmake_presets.py
+            cmake -B build --preset=default -DCMAKE_BUILD_TYPE=Release
+            cmake --build build -j
+            cmake --install build
+
+            echo "=== Build directory structure ==="
+            Get-ChildItem -Path build -Recurse -File | Select-Object FullName
+            
+            echo "`n=== DLL/PYD files ==="
+            Get-ChildItem -Path build -Recurse -Include *.dll,*.pyd | Format-Table Name, Length, LastWriteTime
+            
+            echo "`n=== pod5_random_access contents ==="
+            Get-ChildItem -Path pod5_random_access
+
+            pip install delvewheel
           
-          CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel"
-          
-          # Use standard pip build 
           CIBW_BUILD_FRONTEND: "pip"
           
-          # Test the wheel
           CIBW_TEST_COMMAND: "python -c \"import pod5_random_access; from pod5_random_access.pod5_random_access_pybind import Pod5Index; print('✅ Windows wheel works!')\""
           
-          # Repair wheels with delvewheel (Windows equivalent of auditwheel)
           CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: "delvewheel repair -w {dest_dir} {wheel}"
           
-          # Skip pypy, musllinux, and x86 (32-bit)
           CIBW_SKIP: "pp* *-musllinux* *-win32"
       
       - name: Upload wheels

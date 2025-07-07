@@ -33,11 +33,10 @@ install(TARGETS pod5_random_access_pybind
 
 
 if(WIN32)
-    if(DEFINED VCPKG_TOOLCHAIN)
-        set(VCPKG_INSTALLED_DIR "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
-        
-        # 必要なDLLのリストを定義
-        set(REQUIRED_DLLS
+  if(DEFINED VCPKG_TOOLCHAIN)
+    set(VCPKG_INSTALLED_DIR "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+
+    set(REQUIRED_DLLS
             "arrow.dll"
             "brotlienc.dll"
             "brotlidec.dll"
@@ -48,8 +47,8 @@ if(WIN32)
             "zlib1.dll"
             "brotlicommon.dll"
         )
-        
-        install(CODE "
+
+    install(CODE "
             set(REQUIRED_DLLS ${REQUIRED_DLLS})
             foreach(DLL_NAME IN LISTS REQUIRED_DLLS)
                 set(DLL_PATH \"${VCPKG_INSTALLED_DIR}/bin/\${DLL_NAME}\")
@@ -61,20 +60,5 @@ if(WIN32)
                 endif()
             endforeach()
         ")
-    endif()
+  endif()
 endif()
-
-
-# if(WIN32)
-#   install(CODE "
-#         file(GLOB DLLS
-#             \"${CMAKE_BINARY_DIR}/Debug/bin/*.dll\"
-#             \"${CMAKE_BINARY_DIR}/Release/bin/*.dll\"
-#             \"${CMAKE_BINARY_DIR}/*.dll\"
-#         )
-#         if(DLLS)
-#             file(COPY \${DLLS} DESTINATION \"${PYTHON_MODULE_INSTALL_DIR}\")
-#             message(STATUS \"Copied DLLs: \${DLLS}\")
-#         endif()
-#     ")
-# endif()
