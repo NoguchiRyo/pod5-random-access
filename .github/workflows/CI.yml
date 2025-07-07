@@ -39,7 +39,7 @@ jobs:
           CIBW_ARCHS: x86_64
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_34
           # CIBW_ENVIRONMENT: 'CMAKE_ARGS=-DCMAKE_PREFIX_PATH=/usr'
-          CIBW_ENVIRONMENT: 'Flatbuffers_DIR=/usr/lib64/cmake/flatbuffers'
+          # CIBW_ENVIRONMENT: 'Flatbuffers_DIR=/usr/lib64/cmake/flatbuffers'
           
           CIBW_BEFORE_BUILD_LINUX: |
             set -ex
@@ -67,6 +67,11 @@ jobs:
             # --- 調査3: システム全体でCMakeの設定ファイルを探す ---
             echo "--- Searching for *Config.cmake files under /usr:"
             find /usr -name "*Config.cmake" -o -name "*config.cmake"
+
+            # pod5-file-formatが探すディレクトリを作成
+            mkdir -p extern/pod5-file-format/cmake
+            # インストールされた設定ファイルを、探している名前でシンボリックリンクとして配置
+            ln -s /usr/lib64/cmake/flatbuffers/ extern/pod5-file-format/cmake/Flatbuffers
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"

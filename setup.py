@@ -41,7 +41,7 @@ class CMakeBuildExt(build_ext):
                 "-B",
                 "build",
                 "-DCMAKE_BUILD_TYPE=Release",
-                "--debug-find",
+                # "--debug-find",
             ]
 
             # CMAKE_ARGS環境変数から追加の引数を取得して追加
