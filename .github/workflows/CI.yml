@@ -46,6 +46,8 @@ jobs:
             dnf install -y 'https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm'
             
             dnf install -y https://apache.jfrog.io/artifactory/arrow/almalinux/9/apache-arrow-release-latest.rpm
+
+            dnf install -y python${PY_VER}-devel
             
             dnf install -y \
               libzstd-devel \
