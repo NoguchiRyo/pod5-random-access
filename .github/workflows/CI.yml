@@ -135,21 +135,23 @@ jobs:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: AMD64
           
-          # ★★★ CIBW_CMAKE_ARGS を使用して引数を渡します ★★★
-          CIBW_CMAKE_ARGS: >-
-            -DPython_EXECUTABLE={python_executable}
-            -DCMAKE_BUILD_TYPE=Release
-          
           # Install delvewheel for DLL bundling
           CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel"
+
+          CIBW_ENVIRONMENT_WINDOWS: 'VCPKG_ROOT=${{ github.workspace }}\vcpkg'
+
+          CIBW_CMAKE_ARGS: >-
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.architecture }}-windows
+            -DPython_EXECUTABLE={python_executable}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_GENERATOR="Visual Studio 17 2022"
+            -DCMAKE_GENERATOR_PLATFORM=${{ matrix.architecture == 'x64' && 'x64' || 'Win32' }}
           
-          # ★★★ 環境変数から CMAKE_ARGS を削除します ★★★
-          CIBW_ENVIRONMENT_WINDOWS: >
-            VCPKG_ROOT="${{ github.workspace }}\\vcpkg"
-            CMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
-            CMAKE_GENERATOR="Visual Studio 17 2022"
-            CMAKE_GENERATOR_PLATFORM="${{ matrix.architecture == 'x64' && 'x64' || 'Win32' }}"
-            VCPKG_TARGET_TRIPLET="${{ matrix.architecture }}-windows"
+          CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel"
+          
+          # ★★★ 環境変数はVCPKG_ROOTだけで良い ★★★
+          CIBW_ENVIRONMENT_WINDOWS: 'VCPKG_ROOT=${{ github.workspace }}\vcpkg'
           
           # Use standard pip build 
           CIBW_BUILD_FRONTEND: "pip"
