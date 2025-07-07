@@ -46,7 +46,7 @@ jobs:
             ln -sf /usr/bin/cmake3 /usr/bin/cmake
             wget https://apache.jfrog.io/artifactory/arrow/centos/apache-arrow-release-latest.rpm
             yum install -y apache-arrow-release-latest.rpm
-            yum install -y arrow-devel
+            yum install -y arrow-devel zstd-devel flatbuffers-devel brotli-devel utf8proc-devel re2-devel bzip2-devel lz4-devel snappy-devel libcurl-devel openssl-devel
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
@@ -139,8 +139,8 @@ jobs:
           # Repair wheels with delvewheel (Windows equivalent of auditwheel)
           CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: "delvewheel repair -w {dest_dir} {wheel}"
           
-          # Skip pypy and musllinux only
-          CIBW_SKIP: "pp* *-musllinux*"
+          # Skip pypy, musllinux, and x86 (32-bit)
+          CIBW_SKIP: "pp* *-musllinux* *-win32"
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
