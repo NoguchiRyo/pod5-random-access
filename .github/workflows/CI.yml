@@ -39,13 +39,16 @@ jobs:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: ${{ matrix.platform == 'manylinux_2_17_aarch64' && 'aarch64' || 'x86_64' }}
           
-          # Install Arrow following pod5-file-format DEV.md (CentOS equivalent)
+          # Install Arrow and dependencies following pod5-file-format DEV.md (CentOS equivalent)
           CIBW_BEFORE_BUILD_LINUX: |
             yum install -y cmake3 gcc-c++ make wget
             ln -sf /usr/bin/cmake3 /usr/bin/cmake || true
             # Install Arrow for CentOS/RHEL
             yum install -y https://apache.jfrog.io/artifactory/arrow/centos/8/apache-arrow-release-latest.rpm
             yum install -y arrow-devel-12.0.1 arrow-dataset-devel-12.0.1 parquet-devel-12.0.1
+            # Install other dependencies (CentOS equivalents of libflatbuffers-dev, libzstd-dev)
+            yum install -y epel-release
+            yum install -y flatbuffers-devel libzstd-devel
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
