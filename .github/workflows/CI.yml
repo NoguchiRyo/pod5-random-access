@@ -84,11 +84,19 @@ jobs:
             -DPython_INCLUDE_DIR=$CPYTHON_INCLUDE_DIR
             -DPython_LIBRARY=$CPYTHON_LIBRARY"
 
+          # CIBW_REPAIR_WHEEL_COMMAND: |
+          #   wheel unpack {wheel} --dest {dest_dir}
+          #   cp build/lib/pod5_random_access_pybind*.so {dest_dir}/pod5_random_access-*/pod5_random_access/
+          #   wheel pack {dest_dir}/pod5_random_access-* --dest-dir {dest_dir}
+          #   auditwheel repair {dest_dir}/pod5_random_access-*.whl -w {dest_dir}
           CIBW_REPAIR_WHEEL_COMMAND: |
-            wheel unpack {wheel} --dest {dest_dir}
-            cp build/lib/pod5_random_access_pybind*.so {dest_dir}/pod5_random_access-*/pod5_random_access/
-            wheel pack {dest_dir}/pod5_random_access-* --dest-dir {dest_dir}
-            auditwheel repair {dest_dir}/pod5_random_access-*.whl -w {dest_dir}
+            set -ex
+            echo "--- Listing all files in the project directory ---"
+            # プロジェクトルートから全てのファイルとディレクトリをリストアップ
+            find . -ls
+            echo "--- Investigation complete. Exiting intentionally. ---"
+            # 調査が終わったら、意図的にエラーで終了させる
+            exit 1
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
@@ -136,9 +144,6 @@ jobs:
           CIBW_ARCHS: AMD64
           
           # Install delvewheel for DLL bundling
-          CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel"
-
-          CIBW_ENVIRONMENT_WINDOWS: 'VCPKG_ROOT=${{ github.workspace }}\vcpkg'
 
           CIBW_CMAKE_ARGS: >-
             -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
