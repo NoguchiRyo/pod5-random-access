@@ -38,7 +38,7 @@ jobs:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: x86_64
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_34
-          CIBW_ENVIRONMENT: 'CMAKE_ARGS=-DCMAKE_PREFIX_PATH=/usr'
+          # CIBW_ENVIRONMENT: 'CMAKE_ARGS=-DCMAKE_PREFIX_PATH=/usr'
           CIBW_ENVIRONMENT: 'Flatbuffers_DIR=/usr/lib64/cmake/flatbuffers'
           
           CIBW_BEFORE_BUILD_LINUX: |
