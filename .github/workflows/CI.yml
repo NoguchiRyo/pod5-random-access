@@ -53,8 +53,9 @@ jobs:
           # Test that the wheel imports correctly
           CIBW_TEST_COMMAND: "python -c 'import pod5_random_access; from pod5_random_access.pod5_random_access_pybind import Pod5Index; print(\"✅ Import successful!\")'"
           
-          # Skip musllinux and pypy for now
+          # Skip musllinux and pypy for now, force Ubuntu container
           CIBW_SKIP: "*-musllinux* pp*"
+          CIBW_MANYLINUX_X86_64_IMAGE: "ubuntu:22.04"
           
           # auditwheel repair happens automatically with cibuildwheel
       
