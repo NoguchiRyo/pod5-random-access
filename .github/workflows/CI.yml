@@ -100,9 +100,6 @@ jobs:
       # vcpkgのセットアップ（最新の安定版を使用）
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: '2024.07.12'  # より新しい安定版を使用
-          vcpkgJsonGlob: 'vcpkg.json'
       
       # CMakeUserPresets.jsonを修正
       - name: Create CMakeUserPresets.json
