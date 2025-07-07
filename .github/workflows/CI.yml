@@ -26,8 +26,7 @@ jobs:
           - { version: '3.11', tag: 'cp311' }
           - { version: '3.12', tag: 'cp312' }
         platform:
-          - manylinux_2_17_x86_64
-          - manylinux_2_17_aarch64
+          - linux
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,18 +36,16 @@ jobs:
         uses: pypa/cibuildwheel@v3.0.1
         env:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
-          CIBW_ARCHS: ${{ matrix.platform == 'manylinux_2_17_aarch64' && 'aarch64' || 'x86_64' }}
+          CIBW_ARCHS: x86_64
           
-          # Install Arrow and dependencies following pod5-file-format DEV.md (CentOS equivalent)
+          # Install Arrow and dependencies following pod5-file-format DEV.md exactly
           CIBW_BEFORE_BUILD_LINUX: |
-            yum install -y cmake3 gcc-c++ make wget
-            ln -sf /usr/bin/cmake3 /usr/bin/cmake || true
-            # Install Arrow for CentOS/RHEL
-            yum install -y https://apache.jfrog.io/artifactory/arrow/centos/8/apache-arrow-release-latest.rpm
-            yum install -y arrow-devel-12.0.1 arrow-dataset-devel-12.0.1 parquet-devel-12.0.1
-            # Install other dependencies (CentOS equivalents of libflatbuffers-dev, libzstd-dev)
-            yum install -y epel-release
-            yum install -y flatbuffers-devel libzstd-devel
+            apt update
+            apt install -y -V ca-certificates lsb-release wget
+            wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+            apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+            apt update
+            apt install -y cmake libzstd-dev libflatbuffers-dev libarrow-dev=12.0.1-1
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
@@ -64,7 +61,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-linux-${{ matrix.platform }}-${{ matrix.python.tag }}
+          name: wheels-linux-${{ matrix.python.tag }}
           path: wheelhouse
 
   windows:
