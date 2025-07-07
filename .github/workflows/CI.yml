@@ -49,8 +49,9 @@ jobs:
             
             dnf install -y \
               libzstd-devel \
-              # flatbuffers-devel \
               arrow-devel-12.0.1 \
+
+            # flatbuffers-devel \
             
             # echo "================================================================"
             # echo "             INVESTIGATING PACKAGE FILE LOCATIONS"
