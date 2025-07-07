@@ -1,0 +1,8 @@
+{
+    "name": "pod5-random-access",
+    "version": "0.1.0",
+    "dependencies": [
+        "arrow",
+        "flatbuffers"
+    ]
+}
