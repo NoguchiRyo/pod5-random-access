@@ -40,7 +40,7 @@ jobs:
           CIBW_ARCHS: ${{ matrix.platform == 'manylinux_2_17_aarch64' && 'aarch64' || 'x86_64' }}
           
           # Install basic build dependencies
-          CIBW_BEFORE_BUILD_LINUX: "yum install -y cmake3 gcc-c++ make && ln -sf /usr/bin/cmake3 /usr/bin/cmake"
+          CIBW_BEFORE_BUILD_LINUX: "yum install -y cmake3 gcc-c++ make; ln -sf /usr/bin/cmake3 /usr/bin/cmake || true"
           
           # Use standard pip build
           CIBW_BUILD_FRONTEND: "pip"
@@ -67,7 +67,7 @@ jobs:
           - { version: '3.10', tag: 'cp310' }
           - { version: '3.11', tag: 'cp311' }
           - { version: '3.12', tag: 'cp312' }
-        architecture: ['x64', 'x86']
+        architecture: ['AMD64', 'x86']
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
@@ -92,14 +92,14 @@ jobs:
                 name = "default"
                 inherits = "vcpkg"
                 generator = "Visual Studio 17 2022"
-                architecture = "${{ matrix.architecture }}"
-                toolset = "host=${{ matrix.architecture }}"
+                architecture = "${{ matrix.architecture == 'AMD64' && 'x64' || 'Win32' }}"
+                toolset = "host=${{ matrix.architecture == 'AMD64' && 'x64' || 'x86' }}"
                 environment = @{
                   VCPKG_ROOT = "${{ github.workspace }}/vcpkg"
                 }
                 cacheVariables = @{
                   CMAKE_BUILD_TYPE = "Release"
-                  VCPKG_TARGET_TRIPLET = "${{ matrix.architecture }}-windows"
+                  VCPKG_TARGET_TRIPLET = "${{ matrix.architecture == 'AMD64' && 'x64' || 'x86' }}-windows"
                 }
               }
             )
@@ -111,7 +111,7 @@ jobs:
         uses: pypa/cibuildwheel@v3.0.1
         env:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
-          CIBW_ARCHS: ${{ matrix.architecture }}
+          CIBW_ARCHS: ${{ matrix.architecture == 'AMD64' && 'AMD64' || 'x86' }}
           
           # Install delvewheel for DLL bundling
           CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel"
