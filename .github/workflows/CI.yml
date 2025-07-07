@@ -33,7 +33,7 @@ jobs:
       - name: Build manylinux wheels
         uses: pypa/cibuildwheel@v2.21.4
         env:
-          CIBW_BUILD: "cp${{ matrix.python-version | replace('.', '') }}-*"
+          CIBW_BUILD: "cp${{ replace(matrix.python-version, '.', '') }}-*"
           CIBW_ARCHS: ${{ matrix.platform == 'manylinux_2_17_aarch64' && 'aarch64' || 'x86_64' }}
           
           # Install system dependencies in the manylinux container
@@ -59,7 +59,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-linux-${{ matrix.platform }}-py${{ matrix.python-version }}
+          name: wheels-linux-${{ matrix.platform }}-py${{ replace(matrix.python-version, '.', '') }}
           path: wheelhouse
 
   windows:
@@ -86,7 +86,7 @@ jobs:
       - name: Build Windows wheels
         uses: pypa/cibuildwheel@v2.21.4
         env:
-          CIBW_BUILD: "cp${{ matrix.python-version | replace('.', '') }}-*"
+          CIBW_BUILD: "cp${{ replace(matrix.python-version, '.', '') }}-*"
           CIBW_ARCHS: ${{ matrix.architecture }}
           
           # Set up vcpkg and dependencies
@@ -119,7 +119,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-windows-${{ matrix.architecture }}-py${{ matrix.python-version }}
+          name: wheels-windows-${{ matrix.architecture }}-py${{ replace(matrix.python-version, '.', '') }}
           path: wheelhouse
 
   release:
