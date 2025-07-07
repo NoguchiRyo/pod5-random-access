@@ -36,7 +36,15 @@ class CMakeBuildExt(build_ext):
             subprocess.run(configure_cmd, cwd=project_dir, check=True)
         else:
             # Linux: Simple configuration
-            configure_cmd = ["cmake", "-B", "build", "-DCMAKE_BUILD_TYPE=Release"]
+            configure_cmd = [
+                "cmake",
+                "-B",
+                "build",
+                "-DCMAKE_BUILD_TYPE=Release",
+                "--debug-find",
+            ]
+
+            # CMAKE_ARGS環境変数から追加の引数を取得して追加
             cmake_args = os.environ.get("CMAKE_ARGS", "").split()
             if cmake_args:
                 configure_cmd.extend(cmake_args)
