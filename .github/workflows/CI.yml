@@ -21,7 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        python: 
+          - { version: '3.10', tag: 'cp310' }
+          - { version: '3.11', tag: 'cp311' }
+          - { version: '3.12', tag: 'cp312' }
         platform:
           - manylinux_2_17_x86_64
           - manylinux_2_17_aarch64
@@ -33,7 +36,7 @@ jobs:
       - name: Build manylinux wheels
         uses: pypa/cibuildwheel@v2.21.4
         env:
-          CIBW_BUILD: "cp${{ replace(matrix.python-version, '.', '') }}-*"
+          CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: ${{ matrix.platform == 'manylinux_2_17_aarch64' && 'aarch64' || 'x86_64' }}
           
           # Install system dependencies in the manylinux container
@@ -59,14 +62,17 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-linux-${{ matrix.platform }}-py${{ replace(matrix.python-version, '.', '') }}
+          name: wheels-linux-${{ matrix.platform }}-${{ matrix.python.tag }}
           path: wheelhouse
 
   windows:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        python: 
+          - { version: '3.10', tag: 'cp310' }
+          - { version: '3.11', tag: 'cp311' }
+          - { version: '3.12', tag: 'cp312' }
         architecture: ['x64', 'x86']
     steps:
       - name: Export GitHub Actions cache environment variables
@@ -86,7 +92,7 @@ jobs:
       - name: Build Windows wheels
         uses: pypa/cibuildwheel@v2.21.4
         env:
-          CIBW_BUILD: "cp${{ replace(matrix.python-version, '.', '') }}-*"
+          CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: ${{ matrix.architecture }}
           
           # Set up vcpkg and dependencies
@@ -119,7 +125,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-windows-${{ matrix.architecture }}-py${{ replace(matrix.python-version, '.', '') }}
+          name: wheels-windows-${{ matrix.architecture }}-${{ matrix.python.tag }}
           path: wheelhouse
 
   release:
