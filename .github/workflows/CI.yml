@@ -83,14 +83,38 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
       
+      - name: Create CMakeUserPresets.json
+        run: |
+          $presets = @{
+            version = 2
+            configurePresets = @(
+              @{
+                name = "default"
+                inherits = "vcpkg"
+                generator = "Visual Studio 17 2022"
+                architecture = "${{ matrix.architecture }}"
+                toolset = "host=${{ matrix.architecture }}"
+                environment = @{
+                  VCPKG_ROOT = "${{ github.workspace }}/vcpkg"
+                }
+                cacheVariables = @{
+                  CMAKE_BUILD_TYPE = "Release"
+                  VCPKG_TARGET_TRIPLET = "${{ matrix.architecture }}-windows"
+                }
+              }
+            )
+          } | ConvertTo-Json -Depth 10
+          $presets | Out-File -FilePath "CMakeUserPresets.json" -Encoding utf8
+        shell: pwsh
+      
       - name: Build Windows wheels
         uses: pypa/cibuildwheel@v3.0.1
         env:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: ${{ matrix.architecture }}
           
-          # Install delvewheel and set up build environment
-          CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel && cmake --preset=default"
+          # Install delvewheel for DLL bundling
+          CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel"
           
           # Set up vcpkg environment
           CIBW_ENVIRONMENT_WINDOWS: >

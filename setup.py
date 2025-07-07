@@ -24,34 +24,27 @@ class CMakeBuildExt(build_ext):
         # Create build directory
         build_dir.mkdir(exist_ok=True)
         
-        # Configure CMake
-        cmake_args = [
-            f"-DCMAKE_BUILD_TYPE=Release",
-            f"-DCMAKE_INSTALL_PREFIX={install_dir}",
-            f"-DPYTHON_EXECUTABLE={sys.executable}",
-        ]
-        
-        # Add Windows-specific args if needed
+        # Use CMake preset for configuration
         if sys.platform.startswith('win'):
-            cmake_args.extend([
-                "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE={install_dir}",
-                "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE={install_dir}",
-            ])
-        
-        # Configure
-        configure_cmd = ["cmake", str(project_dir)] + cmake_args
-        print(f"Configuring with: {' '.join(configure_cmd)}")
-        subprocess.run(configure_cmd, cwd=build_dir, check=True)
+            # Windows: Use default preset
+            configure_cmd = ["cmake", "-B", "build", "--preset=default"]
+            print(f"Configuring with preset: {' '.join(configure_cmd)}")
+            subprocess.run(configure_cmd, cwd=project_dir, check=True)
+        else:
+            # Linux: Simple configuration
+            configure_cmd = ["cmake", "-B", "build", "-DCMAKE_BUILD_TYPE=Release"]
+            print(f"Configuring: {' '.join(configure_cmd)}")
+            subprocess.run(configure_cmd, cwd=project_dir, check=True)
         
         # Build
-        build_cmd = ["cmake", "--build", ".", "--config", "Release", "--parallel"]
-        print(f"Building with: {' '.join(build_cmd)}")
-        subprocess.run(build_cmd, cwd=build_dir, check=True)
+        build_cmd = ["cmake", "--build", "build", "-j"]
+        print(f"Building: {' '.join(build_cmd)}")
+        subprocess.run(build_cmd, cwd=project_dir, check=True)
         
         # Install
-        install_cmd = ["cmake", "--install", ".", "--config", "Release"]
-        print(f"Installing with: {' '.join(install_cmd)}")
-        subprocess.run(install_cmd, cwd=build_dir, check=True)
+        install_cmd = ["cmake", "--install", "build"]
+        print(f"Installing: {' '.join(install_cmd)}")
+        subprocess.run(install_cmd, cwd=project_dir, check=True)
 
 # We need to define a dummy extension to trigger the build process
 extensions = [
