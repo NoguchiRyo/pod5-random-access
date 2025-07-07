@@ -132,14 +132,8 @@ jobs:
             
             echo "`n=== pod5_random_access contents ==="
             Get-ChildItem -Path pod5_random_access
-
-            pip install delvewheel
-          
-          CIBW_BUILD_FRONTEND: "pip"
           
           CIBW_TEST_COMMAND: "python -c \"import pod5_random_access; from pod5_random_access.pod5_random_access_pybind import Pod5Index; print('✅ Windows wheel works!')\""
-          
-          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: "delvewheel repair -w {dest_dir} {wheel}"
           
           CIBW_SKIP: "pp* *-musllinux* *-win32"
       
