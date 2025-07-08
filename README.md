@@ -38,7 +38,7 @@ reader = Pod5RandomAccessReader()
 reader.add_pod5_index_settings(settings)
 
 # 3. Fetch signal data
-signal_data = reader.fetch_signal("filename.pod5", "read_uuid")
-signal_length = reader.get_signal_length("filename.pod5", "read_uuid")
-calibration = reader.get_calibration("filename.pod5", "read_uuid")
+signal_data = reader.fetch_signal("filename.pod5", "read_uuid") # np.array of int16
+offset, scaling = reader.get_calibration("filename.pod5", "read_uuid")
+pA_signal = (signal_data + offset) * scaling # converted to pA values
 ```
