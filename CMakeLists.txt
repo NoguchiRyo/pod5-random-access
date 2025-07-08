@@ -6,9 +6,24 @@ set(POD5_BUILD_TOOLS OFF CACHE BOOL "Don't build command line tools")
 set(POD5_BUILD_EXAMPLES OFF CACHE BOOL "Don't build examples")
 set(CPACK_GENERATOR "" CACHE STRING "Disable CPack")  # 追加
 
+
 if(WIN32)
+  message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
+
+  # コマンドライン引数の確認
+  if(Python_EXECUTABLE)
+    message(STATUS "Python_EXECUTABLE from command line: ${Python_EXECUTABLE}")
+  endif()
+
+  set(Python3_FIND_FRAMEWORK NEVER)
+  set(Python3_FIND_STRATEGY LOCATION)
   set(Python3_FIND_REGISTRY NEVER)
-  set(Python_FIND_REGISTRY NEVER)
+
+  find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+
+  message(STATUS "Found Python3_EXECUTABLE: ${Python3_EXECUTABLE}")
+  message(STATUS "Found Python3_INCLUDE_DIRS: ${Python3_INCLUDE_DIRS}")
+  message(STATUS "Found Python3_LIBRARIES: ${Python3_LIBRARIES}")
 endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/extern/pybind11)
