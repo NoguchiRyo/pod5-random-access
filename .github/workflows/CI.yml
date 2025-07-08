@@ -174,32 +174,15 @@ jobs:
           #   powershell -Command "Get-ChildItem -Path build -Recurse -Include *.dll,*.pyd | Format-Table Name, Length, LastWriteTime" &&
           #   echo "`n=== pod5_random_access contents ===" &&
           #   powershell -Command "Get-ChildItem -Path pod5_random_access"
-          CIBW_BEFORE_BUILD_WINDOWS: |
-              :: === 1) 現在の Python 実行ファイルのパスを %PY% に格納 ====================
-              for /f "delims=" %I in ('python -c "import sys, pathlib; print(pathlib.Path(sys.executable).resolve())"') do set "PY=%I"
 
-              :: === 2) CMake Presets 生成（cibuildwheel の Python を使用） ===============
-              "%PY%" build_scripts/generate_cmake_presets.py
-
-              :: === 3) 情報出力 ===========================================================
-              echo Python executable: "%PY%"
-              "%PY%" --version
-
-              :: === 4) CMake configure  ===================================================
-              cmake -B build --preset=default ^
-                    -DPython_EXECUTABLE="%PY%" ^
-                    -DPython3_EXECUTABLE="%PY%" ^
-                    -DPython_FIND_REGISTRY=NEVER ^
-                    -DPython3_FIND_REGISTRY=NEVER
-
-              :: === 5) build & install ====================================================
-              cmake --build build --config Release -j
-              cmake --install build --config Release
-
-              :: === 6) ビルド結果の一覧表示 ==============================================
-              powershell -Command "Get-ChildItem -Path build -Recurse -File | Select-Object FullName"
-              powershell -Command "Get-ChildItem -Path build -Recurse -Include *.dll,*.pyd | Format-Table Name, Length, LastWriteTime"
-              powershell -Command "Get-ChildItem -Path pod5_random_access"
+          CIBW_BEFORE_BUILD_WINDOWS: >-
+            for /f "delims=" %%I in ('python -c "import sys, pathlib; print(pathlib.Path(sys.executable).resolve())"') do set "PY=%%I" &&
+            "%PY%" build_scripts/generate_cmake_presets.py &&
+            echo Python executable: "%PY%" &&
+            "%PY%" --version &&
+            cmake -B build --preset=default -DPython_EXECUTABLE="%PY%" -DPython3_EXECUTABLE="%PY%" -DPython_FIND_REGISTRY=NEVER -DPython3_FIND_REGISTRY=NEVER &&
+            cmake --build build --config Release -j &&
+            cmake --install build --config Release
           
           CIBW_TEST_COMMAND: "python -c \"import pod5_random_access; from pod5_random_access.pod5_random_access_pybind import Pod5Index; print('✅ Windows wheel works!')\""
           
