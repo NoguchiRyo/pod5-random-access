@@ -25,6 +25,7 @@ jobs:
           - { version: '3.10', tag: 'cp310' }
           - { version: '3.11', tag: 'cp311' }
           - { version: '3.12', tag: 'cp312' }
+          - { version: '3.13', tag: 'cp313' }
         platform:
           - linux
     steps:
@@ -93,6 +94,7 @@ jobs:
           - { version: '3.10', tag: 'cp310' }
           - { version: '3.11', tag: 'cp311' }
           - { version: '3.12', tag: 'cp312' }
+          - { version: '3.13', tag: 'cp313' }
         architecture: ['AMD64']
     steps:
       - name: Export GitHub Actions cache environment variables
@@ -114,77 +116,9 @@ jobs:
         env:
           CIBW_BUILD: "${{ matrix.python.tag }}-*"
           CIBW_ARCHS: AMD64
-          #
-          # CIBW_ENVIRONMENT_WINDOWS: >
-          #   GITHUB_WORKSPACE="${{ github.workspace }}"
-
-          # CIBW_BEFORE_BUILD_WINDOWS: |
-          #   python build_scripts/generate_cmake_presets.py
-          #   echo "About to run cmake configure..."
-          #   cmake -B build --preset=default -DCMAKE_BUILD_TYPE=Release
-          #   echo "Cmake configure finished with exit code: %ERRORLEVEL%"
-          #   echo "About to run cmake build..."
-          #   cmake --build build -j
-          #   cmake --install build
-          #
-          #   echo "=== Build directory structure ==="
-          #   Get-ChildItem -Path build -Recurse -File | Select-Object FullName
-          #
-          #   echo "`n=== DLL/PYD files ==="
-          #   Get-ChildItem -Path build -Recurse -Include *.dll,*.pyd | Format-Table Name, Length, LastWriteTime
-          #
-          #   echo "`n=== pod5_random_access contents ==="
-          #   Get-ChildItem -Path pod5_random_access
-          #
-          # CIBW_BEFORE_BUILD_WINDOWS: >
-          #   python build_scripts/generate_cmake_presets.py &&
-          #   echo "About to run cmake configure..." &&
-          #   cmake -B build --preset=default -DCMAKE_BUILD_TYPE=Release &&
-          #   echo "Cmake configure finished with exit code: %ERRORLEVEL%" &&
-          #   echo "About to run cmake build..." &&
-          #   cmake --build build -j &&
-          #   cmake --install build &&
-          #   echo "=== Build directory structure ===" &&
-          #   powershell -Command "Get-ChildItem -Path build -Recurse -File | Select-Object FullName" &&
-          #   echo "`n=== DLL/PYD files ===" &&
-          #   powershell -Command "Get-ChildItem -Path build -Recurse -Include *.dll,*.pyd | Format-Table Name, Length, LastWriteTime" &&
-          #   echo "`n=== pod5_random_access contents ===" &&
-          #   powershell -Command "Get-ChildItem -Path pod5_random_access"
-
-          # cibuildwheelが準備したPythonを使うように環境変数を設定
-          # CIBW_ENVIRONMENT_WINDOWS: >
-          #   CMAKE_PREFIX_PATH=%PYTHONHOME%
-          #   Python_ROOT_DIR=%PYTHONHOME%
-          #   Python3_ROOT_DIR=%PYTHONHOME%
-          #
-          # CIBW_BEFORE_BUILD_WINDOWS: >
-          #   python build_scripts/generate_cmake_presets.py &&
-          #   echo "Python executable: %PYTHON%" &&
-          #   echo "Python version:" &&
-          #   python --version &&
-          #   echo "About to run cmake configure..." &&
-          #   cmake -B build --preset=default -DPython_EXECUTABLE="%PYTHON%" -DPython3_EXECUTABLE="%PYTHON%" -DPython_ROOT_DIR="%PYTHON%\..\.." -DPython3_ROOT_DIR="%PYTHON%\..\.." &&
-          #   echo "Cmake configure finished with exit code: %ERRORLEVEL%" &&
-          #   echo "About to run cmake build..." &&
-          #   cmake --build build --config Release -j &&
-          #   cmake --install build --config Release &&
-          #   echo "=== Build directory structure ===" &&
-          #   powershell -Command "Get-ChildItem -Path build -Recurse -File | Select-Object FullName" &&
-          #   echo "`n=== DLL/PYD files ===" &&
-          #   powershell -Command "Get-ChildItem -Path build -Recurse -Include *.dll,*.pyd | Format-Table Name, Length, LastWriteTime" &&
-          #   echo "`n=== pod5_random_access contents ===" &&
-          #   powershell -Command "Get-ChildItem -Path pod5_random_access"
-
-          # CIBW_BEFORE_BUILD_WINDOWS: >-
-          #   python -c "import sys; print('set PYPATH=' + sys.executable)" > setpypath.bat &&
-          #   call setpypath.bat &&
-          #   python build_scripts/generate_cmake_presets.py &&
-          #   cmake -B build --preset=default -DPython_EXECUTABLE=%PYPATH% -DPython3_EXECUTABLE=%PYPATH% -DPython_FIND_REGISTRY=NEVER -DPython3_FIND_REGISTRY=NEVER &&
-          #   cmake --build build --config Release -j &&
-          #   cmake --install build --config Release
           CIBW_BEFORE_BUILD_WINDOWS: powershell -ExecutionPolicy Bypass -File build_scripts/build_windows.ps1
           
-          CIBW_TEST_COMMAND: "python -c \"import pod5_random_access; from pod5_random_access.pod5_random_access_pybind import Pod5Index; print('✅ Windows wheel works!')\""
+          CIBW_TEST_COMMAND: "python -c \"import pod5_random_access; from pod5_random_access.pod5_random_access_pybind import Pod5Index; print('Windows wheel works!')\""
           
           CIBW_SKIP: "pp* *-musllinux* *-win32"
       
