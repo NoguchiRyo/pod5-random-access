@@ -163,9 +163,7 @@ jobs:
             echo "Python version:" &&
             python --version &&
             echo "About to run cmake configure..." &&
-            cmake -B build --preset=default 
-              -DPython_EXECUTABLE="%PYTHON%"
-              -DPython3_EXECUTABLE="%PYTHON%" &&
+            cmake -B build --preset=default -DPython_EXECUTABLE="%PYTHON%" -DPython3_EXECUTABLE="%PYTHON%" -DPython_ROOT_DIR="%PYTHON%\..\.." -DPython3_ROOT_DIR="%PYTHON%\..\.." &&
             echo "Cmake configure finished with exit code: %ERRORLEVEL%" &&
             echo "About to run cmake build..." &&
             cmake --build build --config Release -j &&

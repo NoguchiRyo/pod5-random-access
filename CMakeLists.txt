@@ -6,6 +6,11 @@ set(POD5_BUILD_TOOLS OFF CACHE BOOL "Don't build command line tools")
 set(POD5_BUILD_EXAMPLES OFF CACHE BOOL "Don't build examples")
 set(CPACK_GENERATOR "" CACHE STRING "Disable CPack")  # 追加
 
+if(WIN32)
+  set(Python3_FIND_REGISTRY NEVER)
+  set(Python_FIND_REGISTRY NEVER)
+endif()
+
 add_subdirectory(${CMAKE_SOURCE_DIR}/extern/pybind11)
 
 set(POD5_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/extern/pod5-file-format)
