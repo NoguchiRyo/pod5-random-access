@@ -176,7 +176,7 @@ jobs:
           #   powershell -Command "Get-ChildItem -Path pod5_random_access"
 
           CIBW_BEFORE_BUILD_WINDOWS: >-
-            for /f "delims=" %%I in ('python -c "import sys, pathlib; print(pathlib.Path(sys.executable).resolve())"') do set "PY=%%I" &&
+            for /f "delims=" %I in ('python -c "import sys, pathlib; print(pathlib.Path(sys.executable).resolve())"') do set "PY=%I" &&
             "%PY%" build_scripts/generate_cmake_presets.py &&
             echo Python executable: "%PY%" &&
             "%PY%" --version &&
