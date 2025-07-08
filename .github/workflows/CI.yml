@@ -176,11 +176,9 @@ jobs:
           #   powershell -Command "Get-ChildItem -Path pod5_random_access"
 
           CIBW_BEFORE_BUILD_WINDOWS: >-
-            for /f "delims=" %I in ('python -c "import sys, pathlib; print(pathlib.Path(sys.executable).resolve())"') do set "PY=%I" &&
-            "%PY%" build_scripts/generate_cmake_presets.py &&
-            echo Python executable: "%PY%" &&
-            "%PY%" --version &&
-            cmake -B build --preset=default -DPython_EXECUTABLE="%PY%" -DPython3_EXECUTABLE="%PY%" -DPython_FIND_REGISTRY=NEVER -DPython3_FIND_REGISTRY=NEVER &&
+            python build_scripts/generate_cmake_presets.py &&
+            python --version &&
+            cmake -B build --preset=default -DPython_EXECUTABLE=python -DPython3_EXECUTABLE=python -DPython_FIND_REGISTRY=NEVER -DPython3_FIND_REGISTRY=NEVER &&
             cmake --build build --config Release -j &&
             cmake --install build --config Release
           
