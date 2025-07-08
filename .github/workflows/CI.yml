@@ -152,28 +152,54 @@ jobs:
           #   powershell -Command "Get-ChildItem -Path pod5_random_access"
 
           # cibuildwheelが準備したPythonを使うように環境変数を設定
-          CIBW_ENVIRONMENT_WINDOWS: >
-            CMAKE_PREFIX_PATH="$PYTHON_BINDIR"
-            Python_ROOT_DIR="$PYTHON_BINDIR"
-            Python3_ROOT_DIR="$PYTHON_BINDIR"
-          
-          CIBW_BEFORE_BUILD_WINDOWS: >
-            python build_scripts/generate_cmake_presets.py &&
-            echo "Python executable: %PYTHON%" &&
-            echo "Python version:" &&
-            python --version &&
-            echo "About to run cmake configure..." &&
-            cmake -B build --preset=default -DPython_EXECUTABLE="%PYTHON%" -DPython3_EXECUTABLE="%PYTHON%" -DPython_ROOT_DIR="%PYTHON%\..\.." -DPython3_ROOT_DIR="%PYTHON%\..\.." &&
-            echo "Cmake configure finished with exit code: %ERRORLEVEL%" &&
-            echo "About to run cmake build..." &&
-            cmake --build build --config Release -j &&
-            cmake --install build --config Release &&
-            echo "=== Build directory structure ===" &&
-            powershell -Command "Get-ChildItem -Path build -Recurse -File | Select-Object FullName" &&
-            echo "`n=== DLL/PYD files ===" &&
-            powershell -Command "Get-ChildItem -Path build -Recurse -Include *.dll,*.pyd | Format-Table Name, Length, LastWriteTime" &&
-            echo "`n=== pod5_random_access contents ===" &&
-            powershell -Command "Get-ChildItem -Path pod5_random_access"
+          # CIBW_ENVIRONMENT_WINDOWS: >
+          #   CMAKE_PREFIX_PATH=%PYTHONHOME%
+          #   Python_ROOT_DIR=%PYTHONHOME%
+          #   Python3_ROOT_DIR=%PYTHONHOME%
+          #
+          # CIBW_BEFORE_BUILD_WINDOWS: >
+          #   python build_scripts/generate_cmake_presets.py &&
+          #   echo "Python executable: %PYTHON%" &&
+          #   echo "Python version:" &&
+          #   python --version &&
+          #   echo "About to run cmake configure..." &&
+          #   cmake -B build --preset=default -DPython_EXECUTABLE="%PYTHON%" -DPython3_EXECUTABLE="%PYTHON%" -DPython_ROOT_DIR="%PYTHON%\..\.." -DPython3_ROOT_DIR="%PYTHON%\..\.." &&
+          #   echo "Cmake configure finished with exit code: %ERRORLEVEL%" &&
+          #   echo "About to run cmake build..." &&
+          #   cmake --build build --config Release -j &&
+          #   cmake --install build --config Release &&
+          #   echo "=== Build directory structure ===" &&
+          #   powershell -Command "Get-ChildItem -Path build -Recurse -File | Select-Object FullName" &&
+          #   echo "`n=== DLL/PYD files ===" &&
+          #   powershell -Command "Get-ChildItem -Path build -Recurse -Include *.dll,*.pyd | Format-Table Name, Length, LastWriteTime" &&
+          #   echo "`n=== pod5_random_access contents ===" &&
+          #   powershell -Command "Get-ChildItem -Path pod5_random_access"
+          CIBW_BEFORE_BUILD_WINDOWS: |
+              :: expand cibuildwheel’s interpreter path
+              set "PY={python}"
+
+              :: generate presets
+              "%PY%" build_scripts/generate_cmake_presets.py
+
+              :: show python info
+              echo Python executable: "%PY%"
+              "%PY%" --version
+
+              :: configure
+              cmake -B build --preset=default ^
+                    -DPython_EXECUTABLE="%PY%" ^
+                    -DPython3_EXECUTABLE="%PY%" ^
+                    -DPython_FIND_REGISTRY=NEVER ^
+                    -DPython3_FIND_REGISTRY=NEVER
+
+              :: build & install
+              cmake --build build --config Release -j
+              cmake --install build --config Release
+
+              :: show tree
+              powershell -Command "Get-ChildItem -Path build -Recurse -File | Select-Object FullName"
+              powershell -Command "Get-ChildItem -Path build -Recurse -Include *.dll,*.pyd | Format-Table Name, Length, LastWriteTime"
+              powershell -Command "Get-ChildItem -Path pod5_random_access"
           
           CIBW_TEST_COMMAND: "python -c \"import pod5_random_access; from pod5_random_access.pod5_random_access_pybind import Pod5Index; print('✅ Windows wheel works!')\""
           
