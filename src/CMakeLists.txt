@@ -1,5 +1,3 @@
-
-set(PYBIND11_FINDPYTHON ON)
 set(SOURCES
     py_pod5.cpp
     pod5_signal_index.cpp

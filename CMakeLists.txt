@@ -24,6 +24,12 @@ if(WIN32)
   message(STATUS "Found Python3_EXECUTABLE: ${Python3_EXECUTABLE}")
   message(STATUS "Found Python3_INCLUDE_DIRS: ${Python3_INCLUDE_DIRS}")
   message(STATUS "Found Python3_LIBRARIES: ${Python3_LIBRARIES}")
+
+  set(PYBIND11_FINDPYTHON OFF)
+  set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+  set(PYTHON_INCLUDE_DIR ${Python3_INCLUDE_DIRS})
+  set(PYTHON_LIBRARY ${Python3_LIBRARIES})
+
 endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/extern/pybind11)
