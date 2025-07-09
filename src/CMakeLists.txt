@@ -1,7 +1,3 @@
-if(WIN32)
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-
 set(SOURCES
     py_pod5.cpp
     pod5_signal_index.cpp
@@ -35,6 +31,11 @@ install(TARGETS pod5_random_access_pybind
 
 
 if(WIN32)
+  set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
+  include(InstallRequiredSystemLibraries)
+  install(PROGRAMS ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
+      DESTINATION ${PYTHON_MODULE_INSTALL_DIR}
+  )
   if(DEFINED VCPKG_TOOLCHAIN)
     set(VCPKG_INSTALLED_DIR "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
 
