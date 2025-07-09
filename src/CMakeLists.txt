@@ -1,3 +1,7 @@
+if(WIN32)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 set(SOURCES
     py_pod5.cpp
     pod5_signal_index.cpp
