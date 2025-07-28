@@ -44,14 +44,14 @@ using SignalIndex = std::unordered_map<ReadId, std::vector<SigLoc>, ReadIdHash>;
 SignalIndex build_signal_index(Pod5FileReader_t *reader) {
   SignalIndex idx;
 
-  std::cerr << "[C++] build_signal_index() start" << std::endl;
+  // std::cerr << "[C++] build_signal_index() start" << std::endl;
 
   // (A) read バッチ数を取得
   size_t batch_count = 0;
   if (pod5_get_read_batch_count(&batch_count, reader) != POD5_OK) {
     throw std::runtime_error("pod5_get_read_batch_count failed");
   }
-  std::cerr << "[C++] batch_count = " << batch_count << std::endl;
+  // std::cerr << "[C++] batch_count = " << batch_count << std::endl;
 
   // (B) 各バッチを順に処理
   for (size_t b = 0; b < batch_count; ++b) {
@@ -141,7 +141,7 @@ SignalIndex build_signal_index(Pod5FileReader_t *reader) {
     }
   }
 
-  std::cerr << "[C++] build_signal_index() done" << std::endl;
+  // std::cerr << "[C++] build_signal_index() done" << std::endl;
   return idx;
 }
 
@@ -176,7 +176,8 @@ void save_index_bin(const SignalIndex &idx, const std::string &path) {
   ofs.write(reinterpret_cast<char *>(&hdr), sizeof hdr);
 
   // --- 本体 -------------------------------------------------------------
-  std::cerr << "[C++] writing index, entry_count=" << idx.size() << std::endl;
+  // std::cerr << "[C++] writing index, entry_count=" << idx.size() <<
+  // std::endl;
   for (auto const &[key, vec] : idx) {
 
     // std::cerr << "[C++] writing\n";
@@ -384,5 +385,3 @@ std::vector<std::vector<int16_t>> fetch_signals_by_batch(
 }
 
 } // namespace pod5
-
-

@@ -71,11 +71,16 @@ public:
     pod5_terminate();
   }
 
-  void build_index() { idx_ = pod5::build_signal_index(reader_); }
+  void build_index() {
+    py::gil_scoped_release release;
+    idx_ = pod5::build_signal_index(reader_);
+  }
   void save_index(const std::string &path) const {
+    py::gil_scoped_release release;
     pod5::save_index_bin(idx_, path);
   }
   void load_index(const std::string &path) {
+    py::gil_scoped_release release;
     idx_ = pod5::load_index_bin(path);
   }
 
@@ -111,24 +116,25 @@ public:
   py::array_t<int16_t> fetch_signal(py::object uuid) const {
     // --- GIL 必要部分: Pythonオブジェクト操作 ---
     ReadId id = to_read_id(uuid);
-    auto it = idx_.find(id);
-    if (it == idx_.end())
-      throw std::out_of_range("UUID not in index");
-    const SigLoc &loc = it->second.front();
-    Pod5ReadRecordBatch_t *batch = get_or_load_batch(loc.batch);
-    size_t n = loc.n_samples;
-
-    std::vector<int16_t> buf(n); // 一時バッファ
-
-    // --- I/O & デコード部分だけ GIL 解放 ---
+    size_t n;
+    std::vector<int16_t> buf;
     {
       py::gil_scoped_release release;
+
+      auto it = idx_.find(id);
+      if (it == idx_.end())
+        throw std::out_of_range("UUID not in index");
+      const SigLoc &loc = it->second.front();
+
+      n = loc.n_samples;
+      buf.resize(n);
+
+      Pod5ReadRecordBatch_t *batch = get_or_load_batch(loc.batch);
       if (pod5_get_read_complete_signal(reader_, batch, loc.row, n,
                                         buf.data()) != POD5_OK)
         throw std::runtime_error("pod5_get_read_complete_signal failed");
     }
 
-    // --- GIL 再取得後に Python API 呼び出し ---
     auto arr = py::array_t<int16_t>(n);
     std::memcpy(arr.mutable_data(), buf.data(), n * sizeof(int16_t));
     return arr;
@@ -266,5 +272,3 @@ PYBIND11_MODULE(pod5_random_access_pybind, m) {
            "Fetch multiple signals in parallel, IO overlapped with numpy "
            "copy");
 }
-
-
