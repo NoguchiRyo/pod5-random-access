@@ -1,25 +1,27 @@
 #ifndef POD5_SIGNAL_INDEX_HPP
 #define POD5_SIGNAL_INDEX_HPP
-#include <cmath>
 #pragma once
 /**
  * @file    pod5_signal_index.hpp
- * @brief   UUID → signal-table 位置({batch,row}) 逆引きインデックスの
- *          生成・シリアライズ API。
+ * @brief   UUID → Signal Table 位置の逆引きインデックスの
+ *          生成・シリアライズ・直接シグナル読み込み API。
  *
- * 依存ライブラリ
- *   • pod5-format C API（<pod5_format/c_api.h>）
- *   • C++17  〈<array> <vector> <unordered_map> <string>〉
+ * Runtime では Read Table batch を一切使わず、
+ * Signal Table への直接アクセスのみでシグナルを取得する。
+ * HDD 上でもシーケンシャルアクセスが可能。
  *
  * 使い方（概要）
  * ------------------------------------------------------------------
  *   pod5_init();
  *   Pod5FileReader_t* rdr = pod5_open_file("run.pod5");
  *
+ *   // Build 時のみ Read Table を走査
  *   auto idx = pod5::build_signal_index(rdr);
  *   pod5::save_index_bin(idx, "run.sigidx");
  *
+ *   // Runtime: Signal Table 直接アクセス
  *   auto idx2 = pod5::load_index_bin("run.sigidx");
+ *   auto sig  = pod5::fetch_signal(rdr, idx2.at(some_id));
  *   ...
  *   pod5_close_and_free_reader(rdr);
  *   pod5_terminate();
@@ -39,20 +41,10 @@ namespace pod5 {
 /*  基本型                                                             */
 /* ------------------------------------------------------------------ */
 
-/**
- * @brief 16 byte バイナリ UUID（read_id）そのものをキーにする。
- *        文字列化せず固定幅なのでハッシュも高速 & メモリ節約。
- */
-// using ReadId = std::array<std::uint8_t, 16>;
-
-/**
- * @brief ReadId 用のシンプルな FNV-1a ハッシュ。
- *        他アルゴリズムに差し替える場合は operator() だけ入れ替える。
- */
-// struct ReadIdHash {
-  // std::size_t operator()(ReadId const &id) const noexcept;
-// };
+/// @brief 16 byte バイナリ UUID（read_id）をキーにする。
 using ReadId = std::array<uint8_t, 16>;
+
+/// @brief ReadId 用の FNV-1a ハッシュ。
 struct ReadIdHash {
   size_t operator()(ReadId const &id) const noexcept {
     size_t h = 14695981039346656037ull;
@@ -65,26 +57,23 @@ struct ReadIdHash {
 };
 
 /**
- * @brief signal テーブル 1 行の所在＋サイズ情報。
+ * @brief Signal Table 上のシグナル位置情報。
  *
- * `stored_sample_count` / `stored_byte_count` は
- * 解析や mmap 読み込み時に役立つ補助情報で、
- * 必要なければ batch / row だけでも運用可能。
+ * signal_row_start から signal_row_count 個の連続した
+ * Signal Table row にシグナルデータが格納されている。
+ * Runtime では Read Table batch を経由せず、この情報だけで
+ * シグナルを直接読み込める。
  */
 struct SigLoc {
-  std::uint32_t batch;             //!< signal バッチ index
-  std::uint32_t row;               //!< バッチ内 row index
-  std::uint32_t n_samples;         //!< 生サンプル数
-  std::float_t calibration_offset; //!< キャリブレーションオフセット
-  std::float_t calibration_scale;  //!< キャリブレーションスケール
+  uint64_t signal_row_start;    //!< Signal Table 上の開始 row index
+  uint32_t signal_row_count;    //!< 連続する signal row 数
+  uint32_t n_samples;           //!< 総サンプル数
+  float    calibration_offset;  //!< キャリブレーションオフセット
+  float    calibration_scale;   //!< キャリブレーションスケール
 };
 
-/**
- * @brief 逆引きインデックス本体。
- *
- * 1 read が複数 signal 行に分かれるので value は可変長 vector。
- */
-using SignalIndex = std::unordered_map<ReadId, std::vector<SigLoc>, ReadIdHash>;
+/// @brief UUID → SigLoc の逆引きインデックス。
+using SignalIndex = std::unordered_map<ReadId, SigLoc, ReadIdHash>;
 
 /* ------------------------------------------------------------------ */
 /*  インデックスの構築                                                 */
@@ -93,10 +82,13 @@ using SignalIndex = std::unordered_map<ReadId, std::vector<SigLoc>, ReadIdHash>;
 /**
  * @brief Open 済み Pod5FileReader からインメモリインデックスを生成。
  *
- * 読み取りは 1 パスで完了。生成に失敗した場合は std::runtime_error。
+ * Read Table の全バッチを 1 パスで走査し、各リードの
+ * signal row indices・サンプル数・キャリブレーション情報を抽出する。
+ * バッチは走査後に即解放され、メモリには SigLoc のみ残る。
  *
- * @param reader  pod5_open_file(…) で取得したリーダー
+ * @param reader  pod5_open_file() で取得したリーダー
  * @return        構築済み SignalIndex
+ * @throw         std::runtime_error  pod5 API エラー時
  */
 SignalIndex build_signal_index(Pod5FileReader_t *reader);
 
@@ -107,8 +99,8 @@ SignalIndex build_signal_index(Pod5FileReader_t *reader);
 /**
  * @brief インデックスをフラットなバイナリ形式で保存。
  *
- * 連続書き出しなので非常に高速。プラットフォーム差異を避けるため
- * エンディアンを混在させない運用を推奨します。
+ * 各エントリは固定長 (ReadId 16B + SigLoc 24B = 40B) で、
+ * 連続書き出しにより高速にシリアライズされる。
  *
  * @param index  書き出すインデックス
  * @param path   出力ファイル名
@@ -125,47 +117,55 @@ void save_index_bin(SignalIndex const &index, std::string const &path);
  */
 SignalIndex load_index_bin(std::string const &path);
 
-// -----------------------------------------------------------------------------
-//  UUID → vector<int16_t> 取得
-// -----------------------------------------------------------------------------
-/**
- * @brief  read_id(UUID) で指定されたリードの生信号を取得する。
- *
- * @param reader  既に open 済みの Pod5FileReader
- * @param index   build_signal_index() で得たインデックス
- * @param id      16-byte バイナリ UUID（ReadId）
- * @return        その read の signal（サンプル単位）
- *
- * @throw std::out_of_range   UUID が index に存在しない
- * @throw std::runtime_error  pod5 API エラー
- */
-std::vector<int16_t> fetch_signal_by_uuid(Pod5FileReader_t *reader,
-                                          SignalIndex const &index,
-                                          ReadId const &id);
+/* ------------------------------------------------------------------ */
+/*  シグナル読み込み（Signal Table 直接アクセス）                      */
+/* ------------------------------------------------------------------ */
 
 /**
- * @brief  UUID → signal を取得しつつ、バッチをキャッシュして使い回します。
- * @param  reader      open 済みの Pod5FileReader
- * @param  index       build_signal_index() で得たインデックス
- * @param  id          16-byte バイナリ UUID（ReadId）
- * @param  batch_cache バッチインデックス→Pod5ReadRecordBatch* のキャッシュ
- * @return             その read の signal（サンプル単位）
- * @throw std::out_of_range   UUID が index に存在しない
- * @throw std::runtime_error  pod5 API エラー
+ * @brief SigLoc を使って Signal Table からシグナルを直接読み込む。
+ *
+ * Read Table batch を経由せず、pod5_get_signal_row_info +
+ * pod5_get_signal で Signal Table に直接アクセスする。
+ * HDD 上でも Read Table 領域へのシークが発生しない。
+ *
+ * @param reader  open 済みの Pod5FileReader
+ * @param loc     インデックスから取得した SigLoc
+ * @return        シグナルデータ（int16 サンプル列）
+ * @throw         std::runtime_error  pod5 API エラー時
  */
-std::vector<int16_t> fetch_signal_by_uuid_and_batch(
-    Pod5FileReader_t *reader, SignalIndex const &index, ReadId const &id,
-    std::unordered_map<uint32_t, Pod5ReadRecordBatch_t *> &batch_cache);
+std::vector<int16_t> fetch_signal(Pod5FileReader_t *reader, SigLoc const &loc);
 
 /**
- * @brief UUID リストを batch ごとに纏め、batch 単位で並列フェッチ
- * @return out_map: 入力の順序に従った各 UUID の信号 vector
+ * @brief SigLoc を使って pA キャリブレーション済みシグナルを取得する。
+ *
+ * 内部で fetch_signal() を呼び、SigLoc 内の calibration 情報で
+ * (raw + offset) * scale の変換を行う。
+ * hashmap lookup は呼び出し側で 1 回だけ行えばよい。
+ *
+ * @param reader  open 済みの Pod5FileReader
+ * @param loc     インデックスから取得した SigLoc
+ * @return        pA 変換済みシグナルデータ（float）
+ * @throw         std::runtime_error  pod5 API エラー時
  */
-std::vector<std::vector<int16_t>> fetch_signals_by_batch(
-    Pod5FileReader_t *reader, SignalIndex const &index,
-    std::vector<ReadId> const &ids,
-    std::unordered_map<uint32_t, Pod5ReadRecordBatch_t *> &batch_cache);
+std::vector<float> fetch_pA_signal(Pod5FileReader_t *reader, SigLoc const &loc);
+
+/* ------------------------------------------------------------------ */
+/*  ソート（HDD シーケンシャルアクセス最適化）                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @brief UUID リストを Signal Table 上の物理位置順にソートする。
+ *
+ * signal_row_start 昇順にソートすることで、HDD 上で
+ * Signal Table を先頭から順にアクセスするパターンになる。
+ *
+ * @param index  構築済みインデックス
+ * @param ids    ソート対象の UUID リスト
+ * @return       ソート後の元インデックス配列（ids への添字）
+ * @throw        std::out_of_range  UUID がインデックスに存在しない場合
+ */
+std::vector<size_t> sort_by_location(SignalIndex const &index,
+                                     std::vector<ReadId> const &ids);
+
 } // namespace pod5
 #endif /* POD5_SIGNAL_INDEX_HPP */
-
-
