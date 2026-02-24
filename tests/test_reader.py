@@ -127,6 +127,52 @@ def test_get_signal_length(pod5_file: Path):
         assert length > 0
 
 
+# ------------------------------------------------------------------
+#  インデックス情報
+# ------------------------------------------------------------------
+
+
+def test_filenames(pod5_file: Path):
+    """filenames プロパティが登録済みファイル名を返す。"""
+    reader = _make_reader(pod5_file)
+    assert reader.filenames == [pod5_file.name]
+
+
+def test_list_read_ids(pod5_file: Path):
+    """list_read_ids が全 read_id を返す。"""
+    reader = _make_reader(pod5_file)
+    read_ids = reader.list_read_ids(pod5_file.name)
+
+    assert len(read_ids) == 10
+    assert all(isinstance(rid, str) for rid in read_ids)
+
+
+def test_list_read_ids_sorted(pod5_file: Path):
+    """sort=True で signal_row_start 昇順に返される。"""
+    reader = _make_reader(pod5_file)
+    name = pod5_file.name
+    sorted_ids = reader.list_read_ids(name, sort=True)
+
+    indexer = reader._get_indexer(name)
+    starts = indexer.get_signal_row_starts(sorted_ids)
+    assert list(starts) == sorted(starts)
+
+
+def test_iter_read_ids(pod5_file: Path):
+    """iter_read_ids が全 (filename, read_id) を物理位置順で返す。"""
+    reader = _make_reader(pod5_file)
+    name = pod5_file.name
+
+    pairs = list(reader.iter_read_ids())
+    assert len(pairs) == 10
+    assert all(fn == name for fn, _ in pairs)
+
+    # 物理位置順であることを確認
+    indexer = reader._get_indexer(name)
+    starts = indexer.get_signal_row_starts([rid for _, rid in pairs])
+    assert list(starts) == sorted(starts)
+
+
 def test_unknown_uuid_raises(pod5_file: Path):
     """存在しない UUID で例外が発生する。"""
     reader = _make_reader(pod5_file)

@@ -4,7 +4,7 @@ import os
 from logging import getLogger
 from operator import itemgetter
 from pathlib import Path
-from typing import Any, Callable, Sequence, TypeVar
+from typing import Any, Callable, Iterator, Sequence, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -205,6 +205,45 @@ class Pod5RandomAccessReader:
                 self._pod5_paths[pod5_file_name]
             )
         return self._indexers[pod5_file_name]
+
+    # ------------------------------------------------------------------
+    #  インデックス情報
+    # ------------------------------------------------------------------
+
+    @property
+    def filenames(self) -> list[str]:
+        """登録済みの pod5 ファイル名一覧を返す。"""
+        return list(self._pod5_paths.keys())
+
+    def list_read_ids(
+        self, pod5_file_name: str, *, sort: bool = False
+    ) -> list[str]:
+        """
+        指定ファイル内の全 read_id を返す。
+
+        Args:
+            pod5_file_name: Pod5 ファイル名。
+            sort: True の場合、Signal Table 上の物理位置順にソートして返す。
+
+        Returns:
+            read_id 文字列のリスト。
+        """
+        indexer = self._get_indexer(pod5_file_name)
+        read_ids = indexer.list_read_ids()
+        if sort:
+            read_ids = indexer.sort_uuids_by_location(read_ids)
+        return read_ids
+
+    def iter_read_ids(self) -> Iterator[tuple[str, str]]:
+        """
+        全ファイルの (filename, read_id) を Signal Table 物理位置順に yield する。
+
+        ファイルごとに signal_row_start 昇順でイテレートするため、
+        この順番で fetch_signal を呼ぶと HDD 上でシーケンシャルアクセスが実現される。
+        """
+        for filename in self.filenames:
+            for read_id in self.list_read_ids(filename, sort=True):
+                yield filename, read_id
 
     # ------------------------------------------------------------------
     #  シグナルアクセス
