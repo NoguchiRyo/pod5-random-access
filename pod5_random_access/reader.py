@@ -110,7 +110,7 @@ class Pod5RandomAccessReader:
             try:
                 indexer.save_index(str(index_path))
                 logger.debug("Built and saved index to %s", index_path)
-            except OSError as e:
+            except (OSError, RuntimeError) as e:
                 logger.warning("Could not save index to %s: %s", index_path, e)
         else:
             logger.debug("Built index in memory for %s", pod5_path.name)
