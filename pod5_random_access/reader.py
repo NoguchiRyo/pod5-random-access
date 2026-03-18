@@ -61,16 +61,41 @@ class Pod5RandomAccessReader:
         reader.add_pod5_dir("/data/pod5/")
     """
 
-    def __init__(self, *, save_index: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        save_index: bool = True,
+        fallback_index_dir: Path | None = None,
+    ) -> None:
         self._pod5_paths: dict[str, Path] = {}
         self._indexers: dict[str, Pod5Index] = {}
         self.save_index = save_index
         """インデックスファイルの自動保存を行うかどうかのデフォルト値。"""
+        self._fallback_index_dir = fallback_index_dir
+        """同ディレクトリに書き込めない場合のフォールバック保存先。"""
 
     @staticmethod
     def _index_path_for(pod5_path: Path) -> Path:
         """pod5 ファイルパスから対応するインデックスファイルパスを導出する。"""
         return pod5_path.parent / (pod5_path.name + INDEX_SUFFIX)
+
+    def _fallback_index_path_for(self, pod5_path: Path) -> Path | None:
+        """fallback_index_dir 配下のインデックスパスを返す。未設定なら None。"""
+        if self._fallback_index_dir is None:
+            return None
+        return self._fallback_index_dir / (
+            str(pod5_path.resolve()).lstrip("/") + INDEX_SUFFIX
+        )
+
+    def _find_existing_index(self, pod5_path: Path) -> Path | None:
+        """同ディレクトリ → fallback の順に既存インデックスを探す。"""
+        primary = self._index_path_for(pod5_path)
+        if primary.exists():
+            return primary
+        fallback = self._fallback_index_path_for(pod5_path)
+        if fallback is not None and fallback.exists():
+            return fallback
+        return None
 
     def _load_indexer(self, pod5_path: Path) -> Pod5Index:
         """
@@ -82,9 +107,11 @@ class Pod5RandomAccessReader:
         Raises:
             FileNotFoundError: .pod5.idx が存在しない場合。
         """
-        index_path = self._index_path_for(pod5_path)
-        if not index_path.exists():
-            raise FileNotFoundError(f"Index file not found: {index_path}")
+        index_path = self._find_existing_index(pod5_path)
+        if index_path is None:
+            raise FileNotFoundError(
+                f"Index file not found for: {pod5_path}"
+            )
         indexer = Pod5Index(str(pod5_path))
         indexer.load_index(str(index_path))
         logger.debug("Loaded index from %s", index_path)
@@ -111,7 +138,22 @@ class Pod5RandomAccessReader:
                 indexer.save_index(str(index_path))
                 logger.debug("Built and saved index to %s", index_path)
             except (OSError, RuntimeError) as e:
-                logger.warning("Could not save index to %s: %s", index_path, e)
+                fallback = self._fallback_index_path_for(pod5_path)
+                if fallback is not None:
+                    try:
+                        fallback.parent.mkdir(parents=True, exist_ok=True)
+                        indexer.save_index(str(fallback))
+                        logger.warning(
+                            "Could not save index to %s: %s — saved to fallback %s",
+                            index_path, e, fallback,
+                        )
+                    except (OSError, RuntimeError) as e2:
+                        logger.warning(
+                            "Could not save index to %s or fallback %s: %s",
+                            index_path, fallback, e2,
+                        )
+                else:
+                    logger.warning("Could not save index to %s: %s", index_path, e)
         else:
             logger.debug("Built index in memory for %s", pod5_path.name)
         return indexer
@@ -140,8 +182,8 @@ class Pod5RandomAccessReader:
         name = pod5_path.name
         self._pod5_paths[name] = pod5_path
 
-        index_path = self._index_path_for(pod5_path)
-        if index_path.exists():
+        existing_index = self._find_existing_index(pod5_path)
+        if existing_index is not None:
             # 遅延ロード: _get_indexer で初回アクセス時にロードされる
             logger.debug("Index found for %s — deferred loading", name)
         else:

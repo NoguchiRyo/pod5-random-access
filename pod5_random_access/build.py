@@ -11,16 +11,53 @@ from .reader import INDEX_SUFFIX, _is_rotational
 logger = getLogger(__name__)
 
 
-def _build_single(pod5_path: Path) -> None:
+def _fallback_index_path(
+    pod5_path: Path, fallback_index_dir: Path | None
+) -> Path | None:
+    """fallback_index_dir 配下のインデックスパスを返す。"""
+    if fallback_index_dir is None:
+        return None
+    return fallback_index_dir / (
+        str(pod5_path.resolve()).lstrip("/") + INDEX_SUFFIX
+    )
+
+
+def _build_single(
+    pod5_path: Path, fallback_index_dir: Path | None = None
+) -> None:
     """1 つの pod5 ファイルに対してインデックスをビルドし保存する。"""
     index_path = pod5_path.parent / (pod5_path.name + INDEX_SUFFIX)
     if index_path.exists():
         logger.debug("Index already exists, skipping: %s", index_path)
         return
 
+    fallback = _fallback_index_path(pod5_path, fallback_index_dir)
+    if fallback is not None and fallback.exists():
+        logger.debug("Index already exists in fallback, skipping: %s", fallback)
+        return
+
     indexer = Pod5Index(str(pod5_path))
     indexer.build_index()
-    indexer.save_index(str(index_path))
+    try:
+        indexer.save_index(str(index_path))
+    except Exception:
+        if fallback is not None:
+            try:
+                fallback.parent.mkdir(parents=True, exist_ok=True)
+                indexer.save_index(str(fallback))
+                logger.warning(
+                    "Could not save index to %s — saved to fallback %s",
+                    index_path, fallback,
+                )
+                return
+            except Exception:
+                logger.warning(
+                    "Failed to save index for %s (primary and fallback)",
+                    pod5_path.name, exc_info=True,
+                )
+                return
+        logger.warning("Failed to save index for %s", pod5_path.name, exc_info=True)
+        return
     logger.info("Built index: %s", index_path)
 
 
@@ -29,6 +66,7 @@ def build_pod5_index(
     *,
     max_workers: int | None = None,
     force: bool = False,
+    fallback_index_dir: Path | None = None,
 ) -> list[Path]:
     """
     ディレクトリ内の全 .pod5 ファイルに対してインデックスをビルドし保存する。
@@ -61,10 +99,13 @@ def build_pod5_index(
     if force:
         targets = all_pod5
     else:
-        targets = [
-            f for f in all_pod5
-            if not (f.parent / (f.name + INDEX_SUFFIX)).exists()
-        ]
+        def _has_index(f: Path) -> bool:
+            if (f.parent / (f.name + INDEX_SUFFIX)).exists():
+                return True
+            fb = _fallback_index_path(f, fallback_index_dir)
+            return fb is not None and fb.exists()
+
+        targets = [f for f in all_pod5 if not _has_index(f)]
 
     if not targets:
         logger.info("All index files already exist — nothing to build")
@@ -88,12 +129,15 @@ def build_pod5_index(
     # --- 順次ビルド ---
     if max_workers == 1:
         for f in targets:
-            _build_single(f)
+            _build_single(f, fallback_index_dir)
         return targets
 
     # --- 並列ビルド (SSD) ---
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(_build_single, f): f for f in targets}
+        futures = {
+            executor.submit(_build_single, f, fallback_index_dir): f
+            for f in targets
+        }
         for future in as_completed(futures):
             pod5_file = futures[future]
             try:
